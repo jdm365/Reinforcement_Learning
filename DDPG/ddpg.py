@@ -41,23 +41,30 @@ class ReplayBuffer:
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
 
     def store_memory(self, state, action, reward, state_, done):
-        self.states = self.states.append(state)[-self.max_len:]
-        self.actions = self.actions.append(action)[-self.max_len:]
-        self.rewards = self.rewards.append(reward)[-self.max_len:]
-        self.states_ = self.states_.append(state_)[-self.max_len:]
-        self.dones = self.dones.append(done)[-self.max_len:]
+        self.states.append(state)
+        self.actions.append(action)
+        self.rewards.append(reward)
+        self.states_.append(state_)
+        self.dones.append(done)
+
+        self.states = self.states[-self.max_len:]
+        self.actions = self.actions[-self.max_len:]
+        self.rewards = self.rewards[-self.max_len:]
+        self.states_ = self.states_[-self.max_len:]
+        self.dones = self.dones[-self.max_len:]
 
     def get_memory_batch(self):
-        state_batch = T.tensor(sample(self.states, self.batch_size)).to(self.device)
-        action_batch = T.tensor(sample(self.actions, self.batch_size)).to(self.device)
-        reward_batch = T.tensor(sample(self.rewards, self.batch_size)).to(self.device)
-        _state_batch = T.tensor(sample(self.states_, self.batch_size)).to(self.device)
+        state_batch = T.tensor(sample(self.states, self.batch_size), dtype=T.float).to(self.device)
+        action_batch = T.tensor(sample(self.actions, self.batch_size), dtype=T.float).to(self.device)
+        reward_batch = T.tensor(sample(self.rewards, self.batch_size), dtype=T.float).to(self.device)
+        _state_batch = T.tensor(sample(self.states_, self.batch_size), dtype=T.float).to(self.device)
         done_batch = T.tensor(sample(self.dones, self.batch_size)).to(self.device)
         return state_batch, action_batch, reward_batch, _state_batch, done_batch
 
 class ActorCriticNetwork(nn.Module):
-    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions):
+    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, checkpoint_file='Trained_Models/ddpg.pt'):
         super(ActorCriticNetwork, self).__init__()
+        self.checkpoint_file = checkpoint_file
         self.actor_network = nn.Sequential(
             nn.Linear(*input_dims, fc1_dims),
             nn.ReLU(),
@@ -66,7 +73,7 @@ class ActorCriticNetwork(nn.Module):
             nn.ReLU(),
             nn.LayerNorm(fc2_dims),
             nn.Linear(fc2_dims, n_actions),
-            nn.Softmax(dim=1)
+            nn.Tanh()
         )
 
         self.critic_network_1 = nn.Sequential(
@@ -86,12 +93,20 @@ class ActorCriticNetwork(nn.Module):
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
-    def forward(self, state, action):
+    def forward(self, state, action=None):
         mu = self.actor_network(state)
-        state_v = self.critic_network_1(state)
-        action_v = self.action_value(action)
-        state_action_v = self.critic_network_2(T.add(state_v, action_v))
+        state_action_v = None
+        if action is not None:
+            state_v = self.critic_network_1(state)
+            action_v = self.action_value(action)
+            state_action_v = self.critic_network_2(T.add(state_v, action_v))
         return mu, state_action_v
+    
+    def save_checkpoint(self):
+        T.save(self.state_dict(), self.checkpoint_file)
+    
+    def load_checkpoint(self):
+        self.load_state_dict(self.checkpoint_file)
 
 class Agent:
     def __init__(self, lr, tau, input_dims, n_actions, gamma=0.99, fc1_dims=400, fc2_dims=300,\
@@ -99,6 +114,7 @@ class Agent:
         self.lr = lr
         self.tau = tau
         self.batch_size = batch_size
+        self.gamma = gamma
 
         self.actor_critic = ActorCriticNetwork(lr, input_dims, fc1_dims, fc2_dims, n_actions)
         self.target_actor_critic = ActorCriticNetwork(lr, input_dims, fc1_dims, fc2_dims, n_actions)
@@ -112,7 +128,8 @@ class Agent:
     def choose_action(self, observation):
         self.actor_critic.eval()
         observation = T.tensor(observation, dtype=T.float).to(self.actor_critic.device)
-        mu, _ = self.actor_critic.forward(observation).to(actor_critic.device)
+        mu, _ = self.actor_critic.forward(observation)
+        mu.to(self.actor_critic.device)
         mu_prime = mu + T.tensor(self.noise(), dtype=T.float).to(self.actor_critic.device)
         self.actor_critic.train()
         return mu_prime.cpu().detach().numpy()
@@ -125,25 +142,27 @@ class Agent:
             return
         states, actions, rewards, states_, dones = self.memory.get_memory_batch()
         self.actor_critic.eval()
-        self.target_actor_critic()
+        self.target_actor_critic.eval()
 
         target_actions, _ = self.target_actor_critic.forward(states)
-        _, critic_value_ = self.target_critic.forward(states_, target_actions)
-        actor_value, critic_value = self.actor_critic.forward(states, actions)
+        _, critic_value_ = self.target_actor_critic.forward(states_, target_actions)
+        _, critic_value = self.actor_critic.forward(states, actions)
 
-        critic_value_[done] = 0.0
+        critic_value_[dones] = 0.0
         critic_value_ = critic_value_.view(-1)
         
-        target = reward + self.gamma * critic_value_
+        target = rewards + self.gamma * critic_value_
         target = target.view(self.batch_size, 1)
 
         self.actor_critic.zero_grad()
+
         critic_loss = F.mse_loss(target, critic_value)
-        _, actor_loss = -self.actor_critic.forward(states, actor_value)
+        _, actor_loss = self.actor_critic.forward(states, self.actor_critic.forward(states)[0])
+        actor_loss *= -1
         actor_loss = T.mean(actor_loss)
 
-        critic_value.backward()
-        actor_value.backward()
+        critic_loss.backward()
+        actor_loss.backward()
 
         self.actor_critic.optimizer.step()
 
@@ -156,9 +175,19 @@ class Agent:
         ac_state_dict = self.actor_critic.state_dict()
         target_ac_state_dict = self.target_actor_critic.state_dict()
 
-        for name in ac_state_dict:
-            ac_state_dict = tau * ac_state_dict[name].clone() + \
+        for name in ac_state_dict.keys():
+            ac_state_dict[name] = tau * ac_state_dict[name].clone() + \
                 (1 - tau) * target_ac_state_dict[name].clone()
     
         self.target_actor_critic.load_state_dict(ac_state_dict)
+
+    def save_models(self):
+        print('...Saving Models...')
+        self.actor_critic.save_checkpoint()
+        self.target_actor_critic.save_checkpoint()
+    
+    def load_models(self):
+        print('...Loading Models...')
+        self.actor_critic.load_models()
+        self.target_actor_critic.load_models()
     
