@@ -1,7 +1,7 @@
 import gym
 import numpy as np
 from utils import plot_learning
-from lunar_lander import Agent
+from deep_q import Agent
 
 env = gym.make('LunarLander-v2')
 num_episodes = 3000
