@@ -89,18 +89,29 @@ class ActorCriticNetwork(nn.Module):
             nn.Linear(fc2_dims, 1)
         )
 
+        self.actor_network.apply(self.init_weights)
+        self.critic_network_1.apply(self.init_weights)
+        self.critic_network_2.apply(self.init_weights)
+        self.action_value.apply(self.init_weights)
+
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
-    def forward(self, state, action=None):
-        mu = self.actor_network(state)
-        state_action_v = None
-        if action is not None:
-            state_v = self.critic_network_1(state)
-            action_v = self.action_value(action)
-            state_action_v = self.critic_network_2(T.add(state_v, action_v))
-        return mu, state_action_v
+    def forward_actor(self, state):
+        return self.actor_network(state)
+
+    def forward_critic(self, state, action):
+        state_v = self.critic_network_1(state)
+        action_v = self.action_value(action)
+        state_action_v = self.critic_network_2(T.add(state_v, action_v))
+        return state_action_v
+    
+    def init_weights(self, layer):
+        if isinstance(layer, nn.Linear):
+            f = 1./np.sqrt(layer.weight.data.size()[0])
+            T.nn.init.uniform_(layer.weight, -f, f)
+            T.nn.init.uniform_(layer.bias, -f, f)
     
     def save_checkpoint(self):
         T.save(self.state_dict(), self.checkpoint_file)
@@ -128,8 +139,7 @@ class Agent:
     def choose_action(self, observation):
         self.actor_critic.eval()
         observation = T.tensor(observation, dtype=T.float).to(self.actor_critic.device)
-        mu, _ = self.actor_critic.forward(observation)
-        mu.to(self.actor_critic.device)
+        mu = self.actor_critic.forward_actor(observation).to(self.actor_critic.device)
         mu_prime = mu + T.tensor(self.noise(), dtype=T.float).to(self.actor_critic.device)
         self.actor_critic.train()
         return mu_prime.cpu().detach().numpy()
@@ -144,9 +154,9 @@ class Agent:
         self.actor_critic.eval()
         self.target_actor_critic.eval()
 
-        target_actions, _ = self.target_actor_critic.forward(states)
-        _, critic_value_ = self.target_actor_critic.forward(states_, target_actions)
-        _, critic_value = self.actor_critic.forward(states, actions)
+        target_actions = self.target_actor_critic.forward_actor(states)
+        critic_value_ = self.target_actor_critic.forward_critic(states_, target_actions)
+        critic_value = self.actor_critic.forward_critic(states, actions)
 
         critic_value_[dones] = 0.0
         critic_value_ = critic_value_.view(-1)
@@ -157,8 +167,7 @@ class Agent:
         self.actor_critic.zero_grad()
 
         critic_loss = F.mse_loss(target, critic_value)
-        _, actor_loss = self.actor_critic.forward(states, self.actor_critic.forward(states)[0])
-        actor_loss *= -1
+        actor_loss = -self.actor_critic.forward_critic(states, self.actor_critic.forward_actor(states))
         actor_loss = T.mean(actor_loss)
 
         critic_loss.backward()
