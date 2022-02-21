@@ -7,7 +7,7 @@ from random import sample
 import sys
 
 class OUActionNoise(object):
-    def __init__(self, mu, sigma=0.15, theta=.2, dt=1e-2, x0=None):
+    def __init__(self, mu, sigma=0.2, theta=.15, dt=1e-2, x0=None):
         self.theta = theta
         self.mu = mu
         self.sigma = sigma
@@ -125,7 +125,10 @@ class CriticNetwork(nn.Module):
         T.nn.init.uniform_(self.action_value.weight.data, -f3, f3)
         T.nn.init.uniform_(self.action_value.bias.data, -f3, f3)
 
-        self.v = nn.Linear(fc2_dims, 1)
+        self.q = nn.Linear(fc2_dims, 1)
+        f4 = 3e-3
+        T.nn.init.uniform_(self.q.weight.data, -f4, f4)
+        T.nn.init.uniform_(self.q.bias.data, -f4, f4)
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
@@ -135,7 +138,7 @@ class CriticNetwork(nn.Module):
         state_v = self.critic_network_1(state)
         action_v = F.relu(self.action_value(action))
         state_action_v = F.relu(T.add(state_v, action_v))
-        return self.v(state_action_v)
+        return self.q(state_action_v)
 
     def init_weights(self, layer):
         if isinstance(layer, nn.Linear):
@@ -189,10 +192,6 @@ class Agent:
         actions = T.tensor(actions, dtype=T.float).to(self.critic.device)
         states = T.tensor(states, dtype=T.float).to(self.critic.device)
 
-        self.critic.eval()
-        self.target_actor.eval()
-        self.target_critic.eval()
-
         target_actions = self.target_actor.forward(states_)
         critic_value_ = self.target_critic.forward(states_, target_actions)
         critic_value = self.critic.forward(states, actions)
@@ -203,16 +202,13 @@ class Agent:
         target = T.tensor(target).to(self.critic.device)
         target = target.view(self.batch_size, 1)
 
-        self.critic.train()
         self.critic.optimizer.zero_grad()
         critic_loss = F.mse_loss(target, critic_value)
         critic_loss.backward()
         self.critic.optimizer.step()
 
-        self.critic.eval()
-        self.actor.optimizer.zero_grad()
         mu = self.actor.forward(states)
-        self.actor.train()
+        self.actor.optimizer.zero_grad()
         actor_loss = -self.critic.forward(states, mu)
         actor_loss = T.mean(actor_loss)
         actor_loss.backward()
@@ -228,6 +224,7 @@ class Agent:
         critic_state_dict = self.critic.state_dict()
         target_actor_dict = self.target_actor.state_dict()
         target_critic_dict = self.target_critic.state_dict()
+        print("This is working ")
 
         for name in critic_state_dict:
             critic_state_dict[name] = tau*critic_state_dict[name].clone() + \
