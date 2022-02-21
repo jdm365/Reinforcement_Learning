@@ -4,9 +4,9 @@ from utils import plot_learning
 from ddpg import Agent
 
 env = gym.make('LunarLanderContinuous-v2')
-agent = Agent(lr=3e-5, tau=1e-3, input_dims=env.observation_space.shape, \
+agent = Agent(lr_actor=3e-5, lr_critic=3e-4, tau=1e-3, input_dims=env.observation_space.shape, \
     n_actions=env.action_space.shape[0])
-n_episodes = 1000
+n_episodes = 2500
 filename = 'LunarLander_DDPG'
 best_score = env.reward_range[0]
 score_history = []
@@ -36,7 +36,7 @@ for i in range(n_episodes):
     if avg_score > 160:
         render = True
 
-    print(f'Episode {i} Score: {score} \t\t Average Score: {avg_score}')
+    print(f'Episode {i} Score: {np.round(score, 2)} \t\t Average Score: {np.round(avg_score, 2)}')
 x = [i+1 for i in range(n_episodes)]
 plot_learning(score_history, filename=filename, x=x)
 

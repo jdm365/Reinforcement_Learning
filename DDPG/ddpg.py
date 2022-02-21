@@ -61,7 +61,7 @@ class ReplayBuffer:
         action_batch = np.array(self.actions)[batch]
         reward_batch = np.array(self.rewards)[batch]
         _state_batch = np.array(self.states_)[batch]
-        done_batch = np.array(self.dones)[batch]
+        done_batch = np.array(self.dones, dtype=np.float32)[batch]
         return state_batch, action_batch, reward_batch, _state_batch, done_batch
 
 class ActorNetwork(nn.Module):
@@ -94,7 +94,7 @@ class ActorNetwork(nn.Module):
 
     def init_weights(self, layer):
         if isinstance(layer, nn.Linear):
-            f = 1./np.sqrt(layer.weight.data.size()[0])
+            f = 1./np.sqrt(layer.weight.data.shape[0])
             T.nn.init.uniform_(layer.weight, -f, f)
             T.nn.init.uniform_(layer.bias, -f, f)
     
@@ -133,15 +133,15 @@ class CriticNetwork(nn.Module):
 
     def forward(self, state, action):
         state_v = self.critic_network_1(state)
-        action_v = self.action_value(action)
+        action_v = F.relu(self.action_value(action))
         state_action_v = F.relu(T.add(state_v, action_v))
         return self.v(state_action_v)
 
     def init_weights(self, layer):
         if isinstance(layer, nn.Linear):
-        f = 1./np.sqrt(layer.weight.data.size()[0])
-        T.nn.init.uniform_(layer.weight, -f, f)
-        T.nn.init.uniform_(layer.bias, -f, f)
+            f = 1./np.sqrt(layer.weight.data.shape[0])
+            T.nn.init.uniform_(layer.weight, -f, f)
+            T.nn.init.uniform_(layer.bias, -f, f)
     
     def save_checkpoint(self):
         T.save(self.state_dict(), self.checkpoint_file)
@@ -151,17 +151,16 @@ class CriticNetwork(nn.Module):
 
 
 class Agent:
-    def __init__(self, lr, tau, input_dims, n_actions, gamma=0.99, fc1_dims=400, fc2_dims=300,\
+    def __init__(self, lr_actor, lr_critic, tau, input_dims, n_actions, gamma=0.99, fc1_dims=400, fc2_dims=300,\
         batch_size=64, max_mem_len=50000):
-        self.lr = lr
         self.tau = tau
         self.batch_size = batch_size
         self.gamma = gamma
 
-        self.actor = ActorNetwork(lr, input_dims, fc1_dims, fc2_dims, n_actions)
-        self.critic = CriticNetwork(10*lr, input_dims, fc1_dims, fc2_dims, n_actions)
-        self.target_actor = ActorNetwork(lr, input_dims, fc1_dims, fc2_dims, n_actions)
-        self.target_critic = CriticNetwork(10*lr, input_dims, fc1_dims, fc2_dims, n_actions)
+        self.actor = ActorNetwork(lr_actor, input_dims, fc1_dims, fc2_dims, n_actions)
+        self.critic = CriticNetwork(lr_critic, input_dims, fc1_dims, fc2_dims, n_actions)
+        self.target_actor = ActorNetwork(lr_actor, input_dims, fc1_dims, fc2_dims, n_actions)
+        self.target_critic = CriticNetwork(lr_critic, input_dims, fc1_dims, fc2_dims, n_actions)
 
         self.memory = ReplayBuffer(max_len=max_mem_len, batch_size=batch_size)
 
