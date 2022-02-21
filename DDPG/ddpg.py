@@ -69,10 +69,10 @@ class ActorNetwork(nn.Module):
 
         self.actor_network = nn.Sequential(
             nn.Linear(*input_dims, fc1_dims),
-            nn.LayerNorm(fc1_dims),
+            #nn.LayerNorm(fc1_dims),
             nn.ReLU(),
             nn.Linear(fc1_dims, fc2_dims),
-            nn.LayerNorm(fc2_dims),
+            #nn.LayerNorm(fc2_dims),
             nn.ReLU()
         )
         self.actor_network.apply(self.init_weights)
@@ -111,10 +111,10 @@ class CriticNetwork(nn.Module):
 
         self.critic_network_1 = nn.Sequential(
             nn.Linear(*input_dims, fc1_dims),
-            nn.LayerNorm(fc1_dims),
+            #nn.LayerNorm(fc1_dims),
             nn.ReLU(),
             nn.Linear(fc1_dims, fc2_dims),
-            nn.LayerNorm(fc2_dims),
+            #nn.LayerNorm(fc2_dims),
             nn.ReLU(),
         )
         self.critic_network_1.apply(self.init_weights)
@@ -202,13 +202,12 @@ class Agent:
         target = T.tensor(target).to(self.critic.device)
         target = target.view(self.batch_size, 1)
 
-        critic_loss = F.mse_loss(target, critic_value)
+        critic_loss = nn.MSELoss()
         self.critic.optimizer.zero_grad()
-        critic_loss.backward()
+        critic_loss(target, critic_value).backward()
         self.critic.optimizer.step()
 
-        actor_loss = -self.critic.forward(states, self.actor.forward(states))
-        actor_loss = T.mean(actor_loss)
+        actor_loss = -self.critic.forward(states, self.actor.forward(states)).mean()
         self.actor.optimizer.zero_grad()
         actor_loss.backward()
         self.actor.optimizer.step()
