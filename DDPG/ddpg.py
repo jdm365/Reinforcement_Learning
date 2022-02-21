@@ -39,8 +39,6 @@ class ReplayBuffer:
         self.states_ = []
         self.dones = []
 
-        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
-
     def store_memory(self, state, action, reward, state_, done):
         self.states.append(state)
         self.actions.append(action)
@@ -65,9 +63,10 @@ class ReplayBuffer:
         return state_batch, action_batch, reward_batch, _state_batch, done_batch
 
 class ActorNetwork(nn.Module):
-    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, checkpoint_file='Trained_Models/ddpg.pt'):
+    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, name, checkpoint_dir='Trained_Models/'):
         super(ActorNetwork, self).__init__()
-        self.checkpoint_file = checkpoint_file
+        self.checkpoint_file = checkpoint_dir + name
+
         self.actor_network = nn.Sequential(
             nn.Linear(*input_dims, fc1_dims),
             nn.LayerNorm(fc1_dims),
@@ -83,7 +82,7 @@ class ActorNetwork(nn.Module):
         T.nn.init.uniform_(self.mu.weight.data, -f3, f3)
         T.nn.init.uniform_(self.mu.bias.data, -f3, f3)
 
-        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr, weight_decay=0.01)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
@@ -95,8 +94,8 @@ class ActorNetwork(nn.Module):
     def init_weights(self, layer):
         if isinstance(layer, nn.Linear):
             f = 1./np.sqrt(layer.weight.data.shape[0])
-            T.nn.init.uniform_(layer.weight, -f, f)
-            T.nn.init.uniform_(layer.bias, -f, f)
+            T.nn.init.uniform_(layer.weight.data, -f, f)
+            T.nn.init.uniform_(layer.bias.data, -f, f)
     
     def save_checkpoint(self):
         T.save(self.state_dict(), self.checkpoint_file)
@@ -106,9 +105,9 @@ class ActorNetwork(nn.Module):
 
 
 class CriticNetwork(nn.Module):
-    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, checkpoint_file='Trained_Models/ddpg.pt'):
+    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, name, checkpoint_dir='Trained_Models/'):
         super(CriticNetwork, self).__init__()
-        self.checkpoint_file = checkpoint_file
+        self.checkpoint_file = checkpoint_dir + name
 
         self.critic_network_1 = nn.Sequential(
             nn.Linear(*input_dims, fc1_dims),
@@ -130,7 +129,7 @@ class CriticNetwork(nn.Module):
         T.nn.init.uniform_(self.q.weight.data, -f4, f4)
         T.nn.init.uniform_(self.q.bias.data, -f4, f4)
 
-        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr, weight_decay=0.01)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
@@ -143,8 +142,8 @@ class CriticNetwork(nn.Module):
     def init_weights(self, layer):
         if isinstance(layer, nn.Linear):
             f = 1./np.sqrt(layer.weight.data.shape[0])
-            T.nn.init.uniform_(layer.weight, -f, f)
-            T.nn.init.uniform_(layer.bias, -f, f)
+            T.nn.init.uniform_(layer.weight.data, -f, f)
+            T.nn.init.uniform_(layer.bias.data, -f, f)
     
     def save_checkpoint(self):
         T.save(self.state_dict(), self.checkpoint_file)
@@ -160,10 +159,10 @@ class Agent:
         self.batch_size = batch_size
         self.gamma = gamma
 
-        self.actor = ActorNetwork(lr_actor, input_dims, fc1_dims, fc2_dims, n_actions)
-        self.critic = CriticNetwork(lr_critic, input_dims, fc1_dims, fc2_dims, n_actions)
-        self.target_actor = ActorNetwork(lr_actor, input_dims, fc1_dims, fc2_dims, n_actions)
-        self.target_critic = CriticNetwork(lr_critic, input_dims, fc1_dims, fc2_dims, n_actions)
+        self.actor = ActorNetwork(lr_actor, input_dims, fc1_dims, fc2_dims, n_actions, name='Actor')
+        self.critic = CriticNetwork(lr_critic, input_dims, fc1_dims, fc2_dims, n_actions, name='Critic')
+        self.target_actor = ActorNetwork(lr_actor, input_dims, fc1_dims, fc2_dims, n_actions, name='Target_Actor')
+        self.target_critic = CriticNetwork(lr_critic, input_dims, fc1_dims, fc2_dims, n_actions, name='Target_Critic')
 
         self.memory = ReplayBuffer(max_len=max_mem_len, batch_size=batch_size)
 
@@ -186,11 +185,12 @@ class Agent:
         if len(self.memory.states) < self.batch_size:
             return
         states, actions, rewards, states_, dones = self.memory.get_memory_batch()
-        rewards = T.tensor(rewards, dtype=T.float).to(self.critic.device)
-        dones = T.tensor(dones).to(self.critic.device)
-        states_ = T.tensor(states_, dtype=T.float).to(self.critic.device)
-        actions = T.tensor(actions, dtype=T.float).to(self.critic.device)
+
         states = T.tensor(states, dtype=T.float).to(self.critic.device)
+        actions = T.tensor(actions, dtype=T.float).to(self.critic.device)
+        rewards = T.tensor(rewards, dtype=T.float).to(self.critic.device)
+        states_ = T.tensor(states_, dtype=T.float).to(self.critic.device)
+        dones = T.tensor(dones).to(self.critic.device)
 
         target_actions = self.target_actor.forward(states_)
         critic_value_ = self.target_critic.forward(states_, target_actions)
@@ -207,9 +207,8 @@ class Agent:
         critic_loss.backward()
         self.critic.optimizer.step()
 
-        mu = self.actor.forward(states)
         self.actor.optimizer.zero_grad()
-        actor_loss = -self.critic.forward(states, mu)
+        actor_loss = -self.critic.forward(states, self.actor.forward(states))
         actor_loss = T.mean(actor_loss)
         actor_loss.backward()
         self.actor.optimizer.step()
@@ -224,17 +223,17 @@ class Agent:
         critic_state_dict = self.critic.state_dict()
         target_actor_dict = self.target_actor.state_dict()
         target_critic_dict = self.target_critic.state_dict()
-        print("This is working ")
 
         for name in critic_state_dict:
             critic_state_dict[name] = tau*critic_state_dict[name].clone() + \
-                                      (1-tau)*target_critic_dict[name].clone()
+                (1-tau)*target_critic_dict[name].clone()
 
         self.target_critic.load_state_dict(critic_state_dict)
 
         for name in actor_state_dict:
             actor_state_dict[name] = tau*actor_state_dict[name].clone() + \
-                                      (1-tau)*target_actor_dict[name].clone()
+                (1-tau)*target_actor_dict[name].clone()
+
         self.target_actor.load_state_dict(actor_state_dict)
 
     def save_models(self):
