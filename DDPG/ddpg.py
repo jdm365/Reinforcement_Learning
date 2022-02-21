@@ -66,37 +66,36 @@ class ActorNetwork(nn.Module):
     def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, name, checkpoint_dir='Trained_Models/'):
         super(ActorNetwork, self).__init__()
         self.checkpoint_file = checkpoint_dir + name
+        self.n_actions = n_actions
 
         self.actor_network = nn.Sequential(
             nn.Linear(*input_dims, fc1_dims),
-            #nn.LayerNorm(fc1_dims),
+            nn.LayerNorm(fc1_dims),
             nn.ReLU(),
             nn.Linear(fc1_dims, fc2_dims),
-            #nn.LayerNorm(fc2_dims),
-            nn.ReLU()
+            nn.LayerNorm(fc2_dims),
+            nn.ReLU(),
+            nn.Linear(fc2_dims, n_actions),
+            nn.Tanh()
         )
         self.actor_network.apply(self.init_weights)
-
-        self.mu = nn.Linear(fc2_dims, n_actions)
-        f3 = 3e-3
-        T.nn.init.uniform_(self.mu.weight.data, -f3, f3)
-        T.nn.init.uniform_(self.mu.bias.data, -f3, f3)
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr, weight_decay=0.01)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
     def forward(self, state):
-        x = self.actor_network(state)
-        mu = T.tanh(self.mu(x))
+        mu = self.actor_network(state)
         return mu
 
     def init_weights(self, layer):
         if isinstance(layer, nn.Linear):
             f = 1./np.sqrt(layer.weight.data.shape[0])
+            if layer.weight.data.shape[0] == self.n_actions:
+                f = 0.003
             T.nn.init.uniform_(layer.weight, -f, f)
             T.nn.init.uniform_(layer.bias, -f, f)
-    
+        
     def save_checkpoint(self):
         T.save(self.state_dict(), self.checkpoint_file)
     
@@ -109,15 +108,17 @@ class CriticNetwork(nn.Module):
         super(CriticNetwork, self).__init__()
         self.checkpoint_file = checkpoint_dir + name
 
-        self.critic_network_1 = nn.Sequential(
-            nn.Linear(*input_dims, fc1_dims),
-            #nn.LayerNorm(fc1_dims),
-            nn.ReLU(),
-            nn.Linear(fc1_dims, fc2_dims),
-            #nn.LayerNorm(fc2_dims),
-            nn.ReLU(),
-        )
-        self.critic_network_1.apply(self.init_weights)
+        self.fc1 = nn.Linear(*input_dims, fc1_dims)
+        self.bn1 = nn.LayerNorm(fc1_dims)
+        f1 = 1./np.sqrt(self.fc1.weight.data.shape[0])
+        T.nn.init.uniform_(self.fc1.weight.data, -f1, f1)
+        T.nn.init.uniform_(self.fc1.bias.data, -f1, f1)
+
+        self.fc2 = nn.Linear(fc1_dims, fc2_dims)
+        self.bn2 = nn.LayerNorm(fc2_dims)
+        f2 = 1./np.sqrt(self.fc2.weight.data.shape[0])
+        T.nn.init.uniform_(self.fc2.weight.data, -f2, f2)
+        T.nn.init.uniform_(self.fc2.bias.data, -f2, f2)
 
         self.action_value = nn.Linear(n_actions, fc2_dims)
         f3 = 3e-3
@@ -134,16 +135,13 @@ class CriticNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, state, action):
-        state_v = self.critic_network_1(state)
+        x = F.relu(self.bn1(self.fc1(state)))
+        state_v = F.relu(self.bn2(self.fc2(x)))
+
         action_v = F.relu(self.action_value(action))
+
         state_action_v = F.relu(T.add(state_v, action_v))
         return self.q(state_action_v)
-
-    def init_weights(self, layer):
-        if isinstance(layer, nn.Linear):
-            f = 1./np.sqrt(layer.weight.data.shape[0])
-            T.nn.init.uniform_(layer.weight, -f, f)
-            T.nn.init.uniform_(layer.bias, -f, f)
     
     def save_checkpoint(self):
         T.save(self.state_dict(), self.checkpoint_file)
@@ -154,7 +152,7 @@ class CriticNetwork(nn.Module):
 
 class Agent:
     def __init__(self, lr_actor, lr_critic, tau, input_dims, n_actions, gamma=0.99, fc1_dims=400, fc2_dims=300,\
-        batch_size=128, max_mem_len=50000):
+        batch_size=64, max_mem_len=50000):
         self.tau = tau
         self.batch_size = batch_size
         self.gamma = gamma
@@ -192,6 +190,9 @@ class Agent:
         states_ = T.tensor(states_, dtype=T.float).to(self.critic.device)
         dones = T.tensor(dones).to(self.critic.device)
 
+        self.target_actor.eval()
+        self.target_critic.eval()
+        self.critic.eval()
         target_actions = self.target_actor.forward(states_)
         critic_value_ = self.target_critic.forward(states_, target_actions)
         critic_value = self.critic.forward(states, actions)
@@ -202,11 +203,13 @@ class Agent:
         target = T.tensor(target).to(self.critic.device)
         target = target.view(self.batch_size, 1)
 
+        self.critic.train()
         critic_loss = nn.MSELoss()
         self.critic.optimizer.zero_grad()
         critic_loss(target, critic_value).backward()
         self.critic.optimizer.step()
 
+        self.critic.eval()
         actor_loss = -self.critic.forward(states, self.actor.forward(states)).mean()
         self.actor.optimizer.zero_grad()
         actor_loss.backward()

@@ -11,7 +11,7 @@ filename = 'LunarLander_DDPG'
 best_score = env.reward_range[0]
 score_history = []
 render = False
-
+np.random.seed(0)
 for i in range(n_episodes):
     observation = env.reset()
     done = False
