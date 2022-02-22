@@ -18,7 +18,7 @@ class ActorNetwork(nn.Module):
         )
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
-        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.device = 'cpu'#T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
     def forward(self, observation):
