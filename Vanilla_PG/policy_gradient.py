@@ -26,6 +26,9 @@ class ActorNetwork(nn.Module):
         mu = Categorical(self.actor(observation))
         return mu
 
+    def save_actor_dict(self, filename):
+        T.save(self.state_dict(), filename)
+
 class Agent:
     def __init__(self, lr, input_dims,  n_actions, fc1_dims=256, fc2_dims=256, gamma=0.99):
         self.actor = ActorNetwork(lr, input_dims, fc1_dims, fc2_dims, n_actions)
@@ -66,3 +69,10 @@ class Agent:
 
         self.log_probs_memory = []
         self.reward_memory = []
+
+    def save_model(self, filename='Trained_Models/policy_gradient_actor'):
+        print('...Saving Model...')
+        self.actor.save_actor_dict(filename=filename)
+
+    def load_model(self, filename='Trained_Models/policy_gradient_actor')
+        self.actor.load_state_dict(filename)
