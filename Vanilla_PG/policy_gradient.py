@@ -74,5 +74,5 @@ class Agent:
         print('...Saving Model...')
         self.actor.save_actor_dict(filename=filename)
 
-    def load_model(self, filename='Trained_Models/policy_gradient_actor')
+    def load_model(self, filename='Trained_Models/policy_gradient_actor'):
         self.actor.load_state_dict(filename)
