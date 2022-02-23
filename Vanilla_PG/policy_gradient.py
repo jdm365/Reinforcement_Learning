@@ -58,6 +58,8 @@ class Agent:
         
         discounted_rewards = T.tensor(discounted_rewards, dtype=T.float).to(self.actor.device)
         log_probs = T.tensor(self.log_probs_memory, dtype=T.float).to(self.actor.device)
+        
+        discounted_rewards = (discounted_rewards - T.mean(discounted_rewards)) / T.std(discounted_rewards, dim=0)
 
         policy_loss = 0
         for return_estimate, log_probs in zip(discounted_rewards, self.log_probs_memory):
@@ -75,4 +77,4 @@ class Agent:
         self.actor.save_actor_dict(filename=filename)
 
     def load_model(self, filename='Trained_Models/policy_gradient_actor'):
-        self.actor.load_state_dict(filename)
+        self.actor.load_state_dict(T.load(filename))
