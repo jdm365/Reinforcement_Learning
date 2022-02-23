@@ -54,13 +54,13 @@ class Agent:
 
     def learn(self, observation, reward, observation_, done):
         self.actor_critic.optimizer.zero_grad()
-        
+
         _, val_ = self.actor_critic.forward(observation_)
         _, val = self.actor_critic.forward(observation)
 
         reward = T.tensor(reward, dtype=T.float).to(self.actor_critic.device)
 
-        advantage = reward + (self.gamma * val_ * (1-int(done))) - val
+        advantage = reward + (self.gamma * val_ * (1-int(done))) - val ## TD Advantage Estimate
         actor_loss = -(advantage * self.log_probs)
         critic_loss = advantage.pow(2)
 

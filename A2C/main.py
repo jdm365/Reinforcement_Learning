@@ -4,7 +4,7 @@ from advantage_actor_critic import Agent
 from utils import plot_learning
 
 env = gym.make('LunarLander-v2')
-agent = Agent(lr=1e-4, input_dims=env.observation_space.shape, \
+agent = Agent(lr=1e-5, fc1_dims=1024, fc2_dims=512, input_dims=env.observation_space.shape, \
     n_actions=env.action_space.n)
 n_episodes = 2500
 score_history = []
