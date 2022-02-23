@@ -53,6 +53,8 @@ class Agent:
         return action.item()
 
     def learn(self, observation, reward, observation_, done):
+        self.actor_critic.optimizer.zero_grad()
+        
         _, val_ = self.actor_critic.forward(observation_)
         _, val = self.actor_critic.forward(observation)
 
@@ -64,7 +66,6 @@ class Agent:
 
         total_loss = actor_loss + critic_loss
 
-        self.actor_critic.optimizer.zero_grad()
         total_loss.backward()
         self.actor_critic.optimizer.step()
 
