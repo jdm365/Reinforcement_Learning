@@ -45,7 +45,7 @@ class CriticNetwork(nn.Module):
         )
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
-        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.device = 'cpu'#T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
     def forward(self, observation):
@@ -68,48 +68,34 @@ class Agent:
         self.critic = CriticNetwork(lr_critic, input_dims, fc1_dims, \
             fc2_dims, n_actions)
         
-        self.state_memory = []
-        self.reward_memory = []
-        self.log_probs_memory = []
         self.gamma = gamma
 
     def choose_action(self, observation):
         mu = self.actor.forward(observation)
         action = mu.sample()
         log_probs = mu.log_prob(action)
-        self.log_probs_memory.append(log_probs)
+        self.log_probs = log_probs
         return action.item()
 
-    def remember(self, observation, reward):
-        self.state_memory.append(observation)
-        self.reward_memory.append(reward)
+    def learn(self, observation, reward, observation_, done):
+        val_ = self.critic.forward(observation_)
+        val = self.critic.forward(observation)
 
-    def learn(self):
-        states = T.tensor(self.state_memory, dtype=T.float).to(self.critic.device)
-        critic_vals = self.critic.forward(states)
+        reward = T.tensor(reward, dtype=T.float)
 
-        actor_loss = 0
-        critic_loss = 0
-        for t in range(len(self.state_memory)-1):
-            advantage = self.reward_memory[t+1] + self.gamma * critic_vals[t+1] - critic_vals[t]
-            actor_loss -= advantage * self.log_probs_memory[t]
-            critic_loss += 0.5 * advantage ** 2
+        advantage = reward + (self.gamma * val_ * (1-int(done))) - val
+        actor_loss = -(advantage * self.log_probs)
+        critic_loss = advantage.pow(2)
 
-        actor_loss = actor_loss / (len(self.state_memory) - 1)
-        actor_loss.to(self.actor.device)
-        critic_loss = critic_loss / (len(self.state_memory) - 1)
-        critic_loss.to(self.critic.device)
+        total_loss = actor_loss + critic_loss
 
         self.actor.optimizer.zero_grad()
         self.critic.optimizer.zero_grad()
-        actor_loss.backward(retain_graph=True)
-        critic_loss.backward(retain_graph=True)
+
+        total_loss.backward()
+
         self.actor.optimizer.step()
         self.critic.optimizer.step()
-
-        self.state_memory = []
-        self.log_probs_memory = []
-        self.reward_memory = []
 
     def save_models(self):
         print('...Saving Model...')
