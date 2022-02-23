@@ -20,10 +20,10 @@ for i in range(n_episodes):
         agent.remember(reward)
         score += reward
         observation = observation_
-        env.render()
+        #env.render()
     score_history.append(score)
     agent.learn()
     print(f'Episode {i+1} score: {np.round(score, 2)} \t\t Average score: {np.round(np.mean(score_history[-100:]), 2)}')
 x = [x for x in range(n_episodes)]
-plot_learning(x, score_history, 'REINFORCE_lunar_lander.png')
+plot_learning(score_history, x=x, filename='REINFORCE_lunar_lander.png')
 agent.save_model()
