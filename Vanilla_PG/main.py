@@ -6,7 +6,7 @@ from utils import plot_learning
 env = gym.make('LunarLander-v2')
 agent = Agent(lr=1e-4, input_dims=env.observation_space.shape, \
     n_actions=env.action_space.n)
-n_episodes = 5000
+n_episodes = 10000
 score_history = []
 #agent.load_model()
 
