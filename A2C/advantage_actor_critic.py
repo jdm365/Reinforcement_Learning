@@ -56,7 +56,7 @@ class Agent:
         _, val_ = self.actor_critic.forward(observation_)
         _, val = self.actor_critic.forward(observation)
 
-        reward = T.tensor(reward, dtype=T.float)
+        reward = T.tensor(reward, dtype=T.float).to(self.actor_critic.device)
 
         advantage = reward + (self.gamma * val_ * (1-int(done))) - val
         actor_loss = -(advantage * self.log_probs)
