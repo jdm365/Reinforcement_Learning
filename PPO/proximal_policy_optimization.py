@@ -59,9 +59,6 @@ class ActorCriticNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(fc1_dims, fc2_dims),
             nn.LayerNorm(fc2_dims),
-            nn.ReLU(),
-            nn.Linear(fc2_dims, fc2_dims),
-            nn.LayerNorm(fc2_dims),
             nn.ReLU()
         )
         init_linear(self.shared_layers)
@@ -78,7 +75,7 @@ class ActorCriticNetwork(nn.Module):
         )
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
-        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.device = 'cou'#T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
     def forward(self, state):
@@ -87,8 +84,8 @@ class ActorCriticNetwork(nn.Module):
         return pi, v
 
 class Agent:
-    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, batch_size=32, \
-        horizon=400, n_updates=4, eta=0.2, gamma=0.99, gae_lambda=0.95):
+    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, batch_size=16, \
+        horizon=40, n_updates=4, eta=0.2, gamma=0.99, gae_lambda=0.95):
         self.gamma = gamma
         self.actor_critic = ActorCriticNetwork(lr, n_actions, input_dims, \
             fc1_dims, fc2_dims)
