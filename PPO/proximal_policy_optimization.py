@@ -84,7 +84,7 @@ class ActorCriticNetwork(nn.Module):
         return pi, v
 
 class Agent:
-    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, batch_size=128, \
+    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, batch_size=256, \
         horizon=512, n_updates=10, eta=0.35, gamma=0.99, gae_lambda=0.90):
         self.gamma = gamma
         self.actor_critic = ActorCriticNetwork(lr, n_actions, input_dims, \
