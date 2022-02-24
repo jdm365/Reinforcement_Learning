@@ -51,20 +51,22 @@ class ReplayBuffer:
 class ActorCriticNetwork(nn.Module):
     def __init__(self, lr, n_actions, input_dims, fc1_dims, fc2_dims):
         super(ActorCriticNetwork, self).__init__()
-        self.actor_network = nn.Sequential(
+
+        self.shared_layers = nn.Sequential(
             nn.Linear(*input_dims, fc1_dims),
             nn.ReLU(),
             nn.Linear(fc1_dims, fc2_dims),
-            nn.ReLU(),
+            nn.ReLU()
+        )
+
+        self.actor_network = nn.Sequential(
+            self.shared_layers,
             nn.Linear(fc2_dims, n_actions),
             nn.Softmax(dim=-1)
         )
 
         self.critic_network = nn.Sequential(
-            nn.Linear(*input_dims, fc1_dims),
-            nn.ReLU(),
-            nn.Linear(fc1_dims, fc2_dims),
-            nn.ReLU(),
+            self.shared_layers,
             nn.Linear(fc2_dims, 1)
         )
 

@@ -15,3 +15,7 @@ def plot_learning(scores, filename=None, x=None, window=100):
     plt.plot(x, running_avg)
     if filename:
       plt.savefig(filename)
+
+class NormInit(nn.Module):
+    def __init__(self):
+        super(NormInit, self).__init__()
