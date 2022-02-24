@@ -16,6 +16,9 @@ def plot_learning(scores, filename=None, x=None, window=100):
     if filename:
       plt.savefig(filename)
 
-class NormInit(nn.Module):
-    def __init__(self):
-        super(NormInit, self).__init__()
+def init_linear(network):
+    for layer in network:
+        if isinstance(layer, nn.Linear):
+            f = 1./np.sqrt(layer.weight.data.shape[0])
+            T.nn.init.uniform_(layer.weight, -f, f)
+            T.nn.init.uniform_(layer.bias, -f, f)

@@ -3,6 +3,7 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
+from utils import init_linear
 
 
 class ReplayBuffer:
@@ -54,10 +55,13 @@ class ActorCriticNetwork(nn.Module):
 
         self.shared_layers = nn.Sequential(
             nn.Linear(*input_dims, fc1_dims),
+            nn.LayerNorm(fc1_dims),
             nn.ReLU(),
             nn.Linear(fc1_dims, fc2_dims),
+            nn.LayerNorm(fc2_dims),
             nn.ReLU()
         )
+        init_linear(self.shared_layers)
 
         self.actor_network = nn.Sequential(
             self.shared_layers,
@@ -96,9 +100,11 @@ class Agent:
 
     def choose_action(self, observation):
         state = T.tensor([observation], dtype=T.float).to(self.actor_critic.device)
+        self.actor_critic.eval()
         probs, value = self.actor_critic.forward(state)
         action_probs = Categorical(probs)
         action = action_probs.sample()
+        self.actor_critic.train()
 
         self.steps_taken += 1
         if self.steps_taken % self.horizon == 0:
@@ -134,7 +140,9 @@ class Agent:
                 advantages.append(A)
             advantages = T.tensor(advantages, dtype=T.float).to(self.actor_critic.device)
 
+            self.actor_critic.eval()
             pi, new_vals = self.actor_critic.forward(states)
+            self.actor_critic.train()
             dist = Categorical(pi)
 
             old_probs = probs
