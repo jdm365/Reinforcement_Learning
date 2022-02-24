@@ -55,10 +55,8 @@ class ActorCriticNetwork(nn.Module):
 
         self.shared_layers = nn.Sequential(
             nn.Linear(*input_dims, fc1_dims),
-            nn.LayerNorm(fc1_dims),
             nn.ReLU(),
             nn.Linear(fc1_dims, fc2_dims),
-            nn.LayerNorm(fc2_dims),
             nn.ReLU()
         )
         init_linear(self.shared_layers)
