@@ -154,7 +154,7 @@ class Agent:
             probs_ratio = (new_probs - old_probs).exp()  ## (a/b) = log(a/b).exp() = (log(a) - log(b)).exp()
             clamped_ratio = probs_ratio.clamp(1 - self.eta, 1 + self.eta)
 
-            if T.sum((new_probs - old_probs) * new_probs.exp()) > self.early_stop:
+            if T.abs(T.sum((new_probs - old_probs) * new_probs.exp())) > self.early_stop:
                 return
             actor_loss = -T.min((probs_ratio * advantages), (clamped_ratio * advantages))
             critic_loss = (advantages + (vals - new_vals))**2
