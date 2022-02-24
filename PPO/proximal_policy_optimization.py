@@ -84,8 +84,8 @@ class ActorCriticNetwork(nn.Module):
         return pi, v
 
 class Agent:
-    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, batch_size=256, \
-        horizon=512, n_updates=10, eta=0.35, gamma=0.99, gae_lambda=0.90):
+    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, batch_size=32, \
+        horizon=400, n_updates=4, eta=0.2, gamma=0.99, gae_lambda=0.95):
         self.gamma = gamma
         self.actor_critic = ActorCriticNetwork(lr, n_actions, input_dims, \
             fc1_dims, fc2_dims)
@@ -97,6 +97,7 @@ class Agent:
         self.horizon = horizon
         self.gae_lambda = gae_lambda
         self.steps_taken = 0
+        self.reward_scaler = 20
 
     def choose_action(self, observation):
         state = T.tensor(observation, dtype=T.float).to(self.actor_critic.device)
@@ -112,6 +113,7 @@ class Agent:
         return action.item(), action_probs.log_prob(action).item(), value.item()
 
     def remember(self, state, action, reward, state_, value, probs, done):
+        reward *= self.reward_scaler
         self.memory.remember(state, action, reward, state_, value, probs, done)
 
     def learn(self):
