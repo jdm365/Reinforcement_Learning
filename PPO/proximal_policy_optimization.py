@@ -59,6 +59,9 @@ class ActorCriticNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(fc1_dims, fc2_dims),
             nn.LayerNorm(fc2_dims),
+            nn.ReLU(),
+            nn.Linear(fc2_dims, fc2_dims),
+            nn.LayerNorm(fc2_dims),
             nn.ReLU()
         )
         init_linear(self.shared_layers)
