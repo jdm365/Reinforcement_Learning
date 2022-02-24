@@ -9,7 +9,7 @@ agent = Agent(lr_actor=1e-5, lr_critic=3e-5, fc1_dims=512, fc2_dims=512, input_d
 n_episodes = 3000
 score_history = []
 solved = False
-agent.load_models()
+#agent.load_models()
 
 for i in range(n_episodes):
     if solved:
