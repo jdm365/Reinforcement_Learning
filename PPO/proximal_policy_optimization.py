@@ -98,6 +98,7 @@ class Agent:
         self.gae_lambda = gae_lambda
         self.steps_taken = 0
         self.reward_scaler = 20
+        self.early_stop = 0.025
 
     def choose_action(self, observation):
         state = T.tensor(observation, dtype=T.float).to(self.actor_critic.device)
@@ -153,7 +154,8 @@ class Agent:
             probs_ratio = (new_probs - old_probs).exp()  ## (a/b) = log(a/b).exp() = (log(a) - log(b)).exp()
             clamped_ratio = probs_ratio.clamp(1 - self.eta, 1 + self.eta)
 
-
+            if T.sum((new_probs - old_probs) * new_probs.exp()) > self.early_stop:
+                return
             actor_loss = -T.min((probs_ratio * advantages), (clamped_ratio * advantages))
             critic_loss = (advantages + (vals - new_vals))**2
             total_loss = actor_loss.mean() + 0.5 * critic_loss.mean()
