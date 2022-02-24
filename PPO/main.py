@@ -7,7 +7,7 @@ env_name = 'LunarLander-v2'
 
 env = gym.make(env_name)
 num_episodes = 3000
-agent = Agent(lr=5e-5, input_dims=env.observation_space.shape, \
+agent = Agent(lr=1e-4, input_dims=env.observation_space.shape, \
     fc1_dims=512, fc2_dims=512, n_actions=env.action_space.n)
 
 filename = f'PPO_{env_name}.png'

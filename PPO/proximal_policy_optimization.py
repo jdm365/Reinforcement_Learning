@@ -137,9 +137,11 @@ class Agent:
                 discount = 1
                 A = 0
                 for k in range(t, self.batch_size-1):
-                    A += discount * (rewards[k] + self.gamma * vals[k+1])*(1-int(dones[k]) \
-                        - vals[k])
+                    delta = rewards[k] + self.gamma * vals[k+1] * (1 - int(dones[k])) - vals[k]
+                    A += discount * delta
                     discount *= self.gamma * self.gae_lambda
+                    if dones[k]:
+                        break
                 advantages.append(A)
             advantages = T.tensor(advantages, dtype=T.float).to(self.actor_critic.device)
 
