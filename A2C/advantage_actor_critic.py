@@ -4,75 +4,119 @@ import torch.optim as optim
 from torch.distributions import Categorical
 import numpy as np
 
-class ActorCriticNetwork(nn.Module):
+class ActorNetwork(nn.Module):
     def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions):
-        super(ActorCriticNetwork, self).__init__()
+        super(ActorNetwork, self).__init__()
 
-        self.shared_layers = nn.Sequential(
+        self.actor_network = nn.Sequential(
             nn.Linear(*input_dims, fc1_dims),
             nn.ReLU(),
             nn.Linear(fc1_dims, fc2_dims),
-            nn.ReLU()
-        )
-        self.mu = nn.Sequential(
+            nn.ReLU(),
             nn.Linear(fc2_dims, n_actions),
             nn.Softmax(dim=-1)
         )
-        self.v = nn.Linear(fc2_dims, 1)
 
-        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr, weight_decay=1e-3)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
     def forward(self, observation):
         observation = T.tensor(observation, dtype=T.float).to(self.device)
-        x = self.shared_layers(observation)
-        mu = Categorical(self.mu(x))
-        v = self.v(x)
-        return mu, v
+        mu = Categorical(self.actor_network(observation))
+        return mu
 
-    def save_actor_critic_dict(self, filename='Trained_Models/A2C_actor_critic'):
+    def save_actor_dict(self, filename='Trained_Models/A2C_actor'):
         T.save(self.state_dict(), filename)
 
-    def load_actor_critic_dict(self, filename='Trained_Models/A2C_actor_critic'):
+    def load_actor_dict(self, filename='Trained_Models/A2C_actor'):
         self.load_state_dict(T.load(filename))
 
-class Agent:
-    def __init__(self, lr, n_actions, input_dims, \
-        fc1_dims=256, fc2_dims=256, gamma=0.99):
+class CriticNetwork(nn.Module):
+    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions):
+        super(CriticNetwork, self).__init__()
 
-        self.actor_critic = ActorCriticNetwork(lr, input_dims, fc1_dims, \
+        self.critic_network = nn.Sequential(
+            nn.Linear(*input_dims, fc1_dims),
+            nn.ReLU(),
+            nn.Linear(fc1_dims, fc2_dims),
+            nn.ReLU(),
+            nn.Linear(fc2_dims, 1)
+        )
+
+        self.optimizer = optim.Adam(self.parameters(), lr=lr, weight_decay=1e-3)
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
+    def forward(self, observation):
+        observation = T.tensor(observation, dtype=T.float).to(self.device)
+        return self.critic_network(observation)
+
+    def save_critic_dict(self, filename='Trained_Models/A2C_critic'):
+        T.save(self.state_dict(), filename)
+
+    def load_critic_dict(self, filename='Trained_Models/A2C_critic'):
+        self.load_state_dict(T.load(filename))
+
+
+class Agent:
+    def __init__(self, lr_actor, lr_critic, n_actions, input_dims, \
+        fc1_dims=256, fc2_dims=256, gamma=0.99, max_mem_length=5):
+
+        self.actor = ActorNetwork(lr_actor, input_dims, fc1_dims, \
+            fc2_dims, n_actions)
+        self.critic = CriticNetwork(lr_critic, input_dims, fc1_dims, \
             fc2_dims, n_actions)
         self.gamma = gamma
+        self.max_mem_length = max_mem_length
+
+        self.state_memory = []
+        self.log_probs_memory = []
+        self.reward_memory = []
 
     def choose_action(self, observation):
-        mu, _ = self.actor_critic.forward(observation)
+        mu = self.actor.forward(observation)
         action = mu.sample()
         log_probs = mu.log_prob(action)
-        self.log_probs = log_probs
+        self.log_probs_memory.append(log_probs)
         return action.item()
 
-    def learn(self, observation, reward, observation_, done):
-        self.actor_critic.optimizer.zero_grad()
+    def remember(self, observation, reward):
+        self.state_memory.append(observation)
+        self.reward_memory.append(reward)
 
-        _, val_ = self.actor_critic.forward(observation_)
-        _, val = self.actor_critic.forward(observation)
+    def learn(self, observation_, done):
+        R = 0
+        gamma = 1
+        for reward in self.reward_memory[1:]:
+            R += gamma * reward
+            gamma *= self.gamma
+        val = self.critic.forward(self.state_memory[0])
+        val_ = self.critic.forward(observation_)*(1-int(done))
+        advantage = R + gamma * val_ - val
+        log_probs = self.log_probs_memory[0]
 
-        reward = T.tensor(reward, dtype=T.float).to(self.actor_critic.device)
-
-        advantage = reward + (self.gamma * val_ * (1-int(done))) - val ## TD Advantage Estimate
-        actor_loss = -(advantage * self.log_probs)
+        actor_loss = -(advantage * log_probs)
         critic_loss = advantage.pow(2)
 
-        total_loss = actor_loss + critic_loss
+        total_loss = (actor_loss + critic_loss)
 
+        self.actor.optimizer.zero_grad()
+        self.critic.optimizer.zero_grad()
         total_loss.backward()
-        self.actor_critic.optimizer.step()
+        self.actor.optimizer.step()
+        self.critic.optimizer.step()
+
+        self.log_probs_memory = []
+        self.state_memory = []
+        self.reward_memory = []
 
     def save_models(self):
         print('...Saving Model...')
-        self.actor_critic.save_actor_dict()
+        self.actor.save_actor_dict()
+        self.critic.save_critic_dict()
 
     def load_models(self):
         print('...Loading Models...')
-        self.actor_critic.load_actor_dict()
+        self.actor.load_actor_dict()
+        self.critic.load_critic_dict()
