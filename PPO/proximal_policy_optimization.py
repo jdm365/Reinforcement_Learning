@@ -99,7 +99,7 @@ class Agent:
         self.steps_taken = 0
 
     def choose_action(self, observation):
-        state = T.tensor([observation], dtype=T.float).to(self.actor_critic.device)
+        state = T.tensor(observation, dtype=T.float).to(self.actor_critic.device)
         self.actor_critic.eval()
         probs, value = self.actor_critic.forward(state)
         action_probs = Categorical(probs)
