@@ -100,11 +100,9 @@ class Agent:
 
     def choose_action(self, observation):
         state = T.tensor(observation, dtype=T.float).to(self.actor_critic.device)
-        self.actor_critic.eval()
         probs, value = self.actor_critic.forward(state)
         action_probs = Categorical(probs)
         action = action_probs.sample()
-        self.actor_critic.train()
 
         self.steps_taken += 1
         if self.steps_taken % self.horizon == 0:
@@ -143,9 +141,7 @@ class Agent:
                 advantages.append(A)
             advantages = T.tensor(advantages, dtype=T.float).to(self.actor_critic.device)
 
-            self.actor_critic.eval()
             pi, new_vals = self.actor_critic.forward(states)
-            self.actor_critic.train()
             dist = Categorical(pi)
 
             old_probs = probs
