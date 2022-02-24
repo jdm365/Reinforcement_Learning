@@ -96,7 +96,7 @@ class Agent:
         self.gae_lambda = gae_lambda
         self.steps_taken = 0
         self.reward_scaler = 20
-        self.early_stop = 0.025
+        self.early_stop = 0.05
 
     def choose_action(self, observation):
         state = T.tensor(observation, dtype=T.float).to(self.actor_critic.device)
