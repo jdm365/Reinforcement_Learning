@@ -149,8 +149,8 @@ class Agent:
                 probs_ratio = (new_probs - old_probs).exp()  ## (a/b) = log(a/b).exp() = (log(a) - log(b)).exp()
                 clamped_ratio = probs_ratio.clamp(1 - self.eta, 1 + self.eta)
 
-                if T.abs(T.sum((new_probs - old_probs) * new_probs.exp())) > self.early_stop:
-                    return
+                #if T.abs(T.sum((new_probs - old_probs) * new_probs.exp())) > self.early_stop:
+                #    return
                 actor_loss = -T.min(probs_ratio * advantages[batch], clamped_ratio * advantages[batch]).mean()
                 critic_loss = T.mean((advantages[batch] + (values[batch] - new_vals.squeeze())).pow(2))
                 total_loss = actor_loss + 0.5 * critic_loss
