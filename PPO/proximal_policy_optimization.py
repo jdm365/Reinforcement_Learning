@@ -84,7 +84,7 @@ class ActorCriticNetwork(nn.Module):
 
 class Agent:
     def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, batch_size=8, \
-        horizon=32, n_updates=8, eta=0.2, gamma=0.99, gae_lambda=0.95):
+        horizon=32, n_updates=4, eta=0.2, gamma=0.99, gae_lambda=0.95):
         self.gamma = gamma
         self.actor_critic = ActorCriticNetwork(lr, n_actions, input_dims, \
             fc1_dims, fc2_dims)
