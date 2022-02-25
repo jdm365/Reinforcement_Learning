@@ -57,9 +57,9 @@ class ActorCriticNetwork(nn.Module):
         self.actor_network = nn.Sequential(
             nn.Linear(*input_dims, 32),
             nn.Tanh(),
-            nn.Linear(32, 32),
+            nn.Linear(32, 64),
             nn.Tanh(),
-            nn.Linear(32, n_actions),
+            nn.Linear(64, n_actions),
             nn.Softmax(dim=-1)
         )
         init_linear(self.actor_network)
