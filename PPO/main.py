@@ -7,8 +7,8 @@ env_name = 'LunarLander-v2'
 
 env = gym.make(env_name)
 num_episodes = 3000
-agent = Agent(lr=1e-5, input_dims=env.observation_space.shape, \
-    fc1_dims=2048, fc2_dims=1536, n_actions=env.action_space.n)
+agent = Agent(lr=1e-4, input_dims=env.observation_space.shape, \
+    fc1_dims=256, fc2_dims=256, n_actions=env.action_space.n)
 
 filename = f'PPO_{env_name}.png'
 
@@ -20,8 +20,10 @@ for i in range(num_episodes):
     while not done:
         action, probs, value = agent.choose_action(observation)
         observation_, reward, done, _ = env.step(action)
-        score += reward
         agent.remember(observation, action, reward, value, probs, done)
+        if agent.steps_taken % agent.horizon == 0:
+            agent.learn()
+        score += reward
         observation = observation_
         if np.mean(scores[-100:]) > 190:
             env.render()

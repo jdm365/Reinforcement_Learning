@@ -17,8 +17,12 @@ def plot_learning(scores, filename=None, x=None, window=100):
       plt.savefig(filename)
 
 def init_linear(network):
+    layer_num = 0
     for layer in network:
+        layer_num += 1
         if isinstance(layer, nn.Linear):
             f = 1./np.sqrt(layer.weight.data.shape[0])
+            if layer_num - len(network) == 1:
+                f = f / 100
             T.nn.init.uniform_(layer.weight, -f, f)
             T.nn.init.uniform_(layer.bias, -f, f)

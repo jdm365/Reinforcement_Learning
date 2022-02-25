@@ -10,8 +10,6 @@ import sys
 class ReplayBuffer:
     def __init__(self, batch_size):
         self.batch_size = batch_size
-        self.gamma = 0.99
-        self.gae_lambda = 0.95
 
         self.states = []
         self.actions = []
@@ -28,34 +26,20 @@ class ReplayBuffer:
         self.probs.append(probs)
         self.dones.append(done)
 
-    def calc_advantages(self):
-        advantages = []
-        for t in range(len(self.rewards)-1):
-            discount = 1
-            A = 0
-            for k in range(len(self.rewards)-1):
-                terminal = 1 - int(self.dones[k])
-                delta = self.rewards[k] + self.gamma * self.vals[k+1] * terminal - self.vals[k]
-                A += discount * delta
-                discount *= self.gamma * self.gae_lambda
-                if terminal:
-                    break
-            advantages.append(A)
-        advantages = np.array(advantages, dtype=np.float)
-        return advantages
+    def get_batches(self):
+        n_states = len(self.states)
+        batch_start = np.arange(0, n_states, self.batch_size)
+        indices = np.arange(n_states, dtype=np.int64)
+        np.random.shuffle(indices)
+        batches = [indices[i:i+self.batch_size] for i in batch_start]
 
-    def get_batch(self):
-        index = np.random.randint(0, len(self.states) - self.batch_size)
-
-        states = np.array(self.states)[index:index+self.batch_size]
-        actions = np.array(self.actions)[index:index+self.batch_size]
-        rewards = np.array(self.rewards)[index:index+self.batch_size]
-        vals = np.array(self.vals)[index:index+self.batch_size]
-        probs = np.array(self.probs)[index:index+self.batch_size]
-        dones = np.array(self.dones)[index:index+self.batch_size]
-        advantages = self.calc_advantages()[index:index+self.batch_size]
-
-        return states, actions, rewards, vals, probs, dones, advantages
+        return np.array(self.states),\
+                np.array(self.actions),\
+                np.array(self.rewards),\
+                np.array(self.vals),\
+                np.array(self.probs),\
+                np.array(self.dones),\
+                batches
     
     def clear_memory(self):
         self.states = []
@@ -71,20 +55,20 @@ class ActorCriticNetwork(nn.Module):
         super(ActorCriticNetwork, self).__init__()
 
         self.actor_network = nn.Sequential(
-            nn.Linear(*input_dims, fc1_dims),
-            nn.LeakyReLU(),
-            nn.Linear(fc1_dims, fc2_dims),
-            nn.LeakyReLU(),
-            nn.Linear(fc2_dims, n_actions),
+            nn.Linear(*input_dims, 32),
+            nn.Tanh(),
+            nn.Linear(32, 32),
+            nn.Tanh(),
+            nn.Linear(32, n_actions),
             nn.Softmax(dim=-1)
         )
         init_linear(self.actor_network)
 
         self.critic_network = nn.Sequential(
             nn.Linear(*input_dims, fc1_dims),
-            nn.LeakyReLU(),
+            nn.Tanh(),
             nn.Linear(fc1_dims, fc2_dims),
-            nn.LeakyReLU(),
+            nn.Tanh(),
             nn.Linear(fc2_dims, 1)
         )
         init_linear(self.critic_network)
@@ -99,8 +83,8 @@ class ActorCriticNetwork(nn.Module):
         return pi, v
 
 class Agent:
-    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, batch_size=32, \
-        horizon=200, n_updates=4, eta=0.2, gamma=0.99, gae_lambda=0.95):
+    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, batch_size=16, \
+        horizon=64, n_updates=4, eta=0.2, gamma=0.99, gae_lambda=0.95):
         self.gamma = gamma
         self.actor_critic = ActorCriticNetwork(lr, n_actions, input_dims, \
             fc1_dims, fc2_dims)
@@ -112,55 +96,66 @@ class Agent:
         self.horizon = horizon
         self.gae_lambda = gae_lambda
         self.steps_taken = 0
-        self.reward_scaler = 20
-        self.early_stop = 0.025
+        self.early_stop = 0.1
 
     def choose_action(self, observation):
         state = T.tensor(observation, dtype=T.float).to(self.actor_critic.device)
-        probs, value = self.actor_critic.forward(state)
-        action_probs = Categorical(probs)
+        pi, value = self.actor_critic.forward(state)
+        action_probs = Categorical(pi)
         action = action_probs.sample()
 
         self.steps_taken += 1
-        if self.steps_taken % self.horizon == 0:
-            self.learn()
         return action.item(), action_probs.log_prob(action).item(), value.item()
 
     def remember(self, state, action, reward, value, probs, done):
-        reward *= self.reward_scaler
         self.memory.remember(state, action, reward, value, probs, done)
+
+    def calc_advantages(self, rewards, vals, dones):
+        advantages = []
+        for t in range(len(rewards)):
+            discount = 1
+            A = 0
+            for k in range(t, len(rewards)-1):
+                terminal = 1 - int(dones[k])
+                delta = rewards[k] + self.gamma * vals[k+1] * terminal - vals[k]
+                A += discount * delta
+                discount *= self.gamma * self.gae_lambda
+                if terminal:
+                    break
+            advantages.append(A)
+        advantages = np.array(advantages, dtype=np.float)
+        return advantages
 
     def learn(self):
         if self.steps_taken < self.batch_size:
             return
 
         for _ in range(self.n_updates):
-            states, actions, rewards, vals, probs, dones, advantages = self.memory.get_batch()
+            states, actions, rewards, vals, probs, dones, batches = self.memory.get_batches()
+            advantages = self.calc_advantages(rewards, vals, dones)
+            values = T.tensor(vals, dtype=T.float).to(self.actor_critic.device)
+            advantages = T.tensor(advantages, dtype=T.float).squeeze().to(self.actor_critic.device)
 
-            states = T.tensor(states, dtype=T.float).to(self.actor_critic.device)
-            actions = T.tensor(actions, dtype=T.float).to(self.actor_critic.device)
-            rewards = T.tensor(rewards, dtype=T.float).to(self.actor_critic.device)
-            vals = T.tensor(vals, dtype=T.float).to(self.actor_critic.device)
-            probs = T.tensor(probs, dtype=T.float).to(self.actor_critic.device)
-            dones = T.tensor(dones, dtype=T.float).to(self.actor_critic.device)
-            advantages = T.tensor(advantages, dtype=T.float).to(self.actor_critic.device)
+            for batch in batches:
+                state_batch = T.tensor(states[batch], dtype=T.float).to(self.actor_critic.device)
+                action_batch = T.tensor(actions[batch], dtype=T.float).to(self.actor_critic.device)
+                probs_batch = T.tensor(probs[batch], dtype=T.float).to(self.actor_critic.device)
 
-            pi, new_vals = self.actor_critic.forward(states)
-            dist = Categorical(pi)
+                pi, new_vals = self.actor_critic.forward(state_batch)
+                dist = Categorical(pi)
+                old_probs = probs_batch
+                new_probs = dist.log_prob(action_batch)
 
-            old_probs = probs
-            new_probs = dist.log_prob(actions)
+                probs_ratio = (new_probs - old_probs).exp()  ## (a/b) = log(a/b).exp() = (log(a) - log(b)).exp()
+                clamped_ratio = probs_ratio.clamp(1 - self.eta, 1 + self.eta)
 
-            probs_ratio = (new_probs - old_probs).exp()  ## (a/b) = log(a/b).exp() = (log(a) - log(b)).exp()
-            clamped_ratio = probs_ratio.clamp(1 - self.eta, 1 + self.eta)
+                if T.abs(T.sum((new_probs - old_probs) * new_probs.exp())) > self.early_stop:
+                    return
+                actor_loss = -T.min(probs_ratio * advantages[batch], clamped_ratio * advantages[batch]).mean()
+                critic_loss = T.mean((advantages[batch] + (values[batch] - new_vals.squeeze())).pow(2))
+                total_loss = actor_loss + 0.5 * critic_loss
 
-            if T.abs(T.sum((new_probs - old_probs) * new_probs.exp())) > self.early_stop:
-                return
-            actor_loss = -T.min(probs_ratio * advantages, clamped_ratio * advantages).mean()
-            critic_loss = T.mean((advantages + (vals - new_vals)).pow(2))
-            total_loss = actor_loss + 0.5 * critic_loss
-
-            self.actor_critic.optimizer.zero_grad()
-            total_loss.backward()
-            self.actor_critic.optimizer.step()
+                self.actor_critic.optimizer.zero_grad()
+                total_loss.backward()
+                self.actor_critic.optimizer.step()
         self.memory.clear_memory()
