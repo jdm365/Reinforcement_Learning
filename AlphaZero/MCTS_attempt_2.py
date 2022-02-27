@@ -9,6 +9,7 @@ class ConnectN:
     def __init__(self, N=2):
         self.columns = N + 2*(N // 2)
         self.N = N
+        self.init_state = valid_moves = np.zeros(self.columns, dtype=int)
 
     def get_next_state(self, board, action, player):
         board_ = np.copy(board)
@@ -80,24 +81,33 @@ class ActorCriticNetwork(nn.Module):
         return self.actor_network(state), self.critic_network(state)
 
 class Node:
-    def __init__(self, prior, to_play):
+    def __init__(self, prev_state, prev_action, prior, to_play, game=ConnectN()):
+        self.game = game
+
         self.prior = prior
         self.to_play = to_play
 
         self.children = {}
         self.visit_count = 0
         self.value_sum = 0
-        self.state = None
-
-    def expand(self, state, probs, to_play):
-        self.state = state
-        self.to_play = to_play
+        if prev_state is not None:
+            self.state = game.get_next_state(prev_state, prev_action, to_play)
+        else:
+            self.state = game.init_state
+        
+    def expand(self, probs):
         for action, prob in enumerate(probs):
             if prob != 0:
-                self.children[action] = Node(0, to_play)
+                next_state = self.game.get_next_state(self.state, action, -self.to_play)
+                self.children[action] = Node(self.state, action, prob, -to_play)
     
     def expanded(self):
         return len(self.children) > 0
+
+    def value(self):
+        if self.visit_count == 0:
+            return 0
+        return self.value_sum / self.visit_count
 
     def calc_ucb(self, parent, child):
         actor_weight = child.prior
@@ -148,9 +158,9 @@ class MCTS:
             4) Backpropogation- Update all nodes selected with result of simulation.
         end
         '''
-    def select_and_expand(self, to_play, node=None):
+    def select_and_expand(self, node=None):
         if node is None:
-            node = Node(prior=0, to_play=to_play)
+            node = Node(prior=0, to_play=1, game=self.game)
 
         search_path = [node]
         ## Find a leaf node
@@ -162,7 +172,7 @@ class MCTS:
         valid_moves = self.game.get_valid_moves(node.state)
         probs *= valid_moves
         probs /= np.sum(probs)
-        node.expand(probs, node.state, to_play)
+        node.expand(probs)
         return node.children, search_path
 
     def rollout(self, node):
@@ -176,19 +186,17 @@ class MCTS:
             valid_moves = self.game.get_valid_moves(next_state)
             probs *= valid_moves
             probs /= np.sum(probs)
-            node.expand(probs, next_state, node.to_play)
+            node.expand(probs)
         return value
 
-    def backprop(self, search_path, value, to_play):
+    def backprop(self, search_path, value):
         for node in reversed(search_path):
-            node.value_sum += value if node.to_play == to_play else -value
+            node.value_sum += value * node.to_play
             node.visit_count += 1
 
-    def search(self, state, to_play, node=None):
+    def search(self, node=None):
         for _ in range(self.n_simulations):
-            child_nodes, search_path = self.select_and_expand(state, to_play, node)
+            child_nodes, search_path = self.select_and_expand(node)
             for idx, node in child_nodes.items():
-                init_state = self.game.get_next_state(state, to_play, idx)
-                value = self.rollout(node, init_state, -to_play)
-                self.backprop(search_path, value, to_play)
-        return node
+                value = self.rollout(node)
+                self.backprop(search_path, value)
