@@ -1,15 +1,17 @@
 import enum
 import numpy as np
+from sympy import root
 import torch as T
 import torch.nn as nn
 import torch.optim as optim
+from tqdm import tqdm
 
 ## 1d connect N game
 class ConnectN:
     def __init__(self, N=2):
         self.columns = N + 2*(N // 2)
         self.N = N
-        self.init_state = valid_moves = np.zeros(self.columns, dtype=int)
+        self.init_state = np.zeros(self.columns, dtype=int)
 
     def get_next_state(self, board, action, player):
         board_ = np.copy(board)
@@ -37,8 +39,6 @@ class ConnectN:
                 return player
             if loss:
                 return -player
-            elif not self.get_valid_moves(board):
-                return None
         return False
 
     def get_player_reward(self, board, player):
@@ -50,21 +50,68 @@ class ConnectN:
     def get_board(self, board, player):
         return player * board
 
+class ReplayBuffer:
+    def __init__(self, batch_size):
+        self.batch_size = batch_size
 
+        self.states = []
+        self.action_probs = []
+        self.rewards = []
+
+        self.episode_states = []
+        self.episode_action_probs = []
+        self.episode_rewards = []
+ 
+    def remember(self, state, action_probs, reward):
+        self.episode_states.append(state)
+        self.episode_action_probs.append(action_probs)
+        self.episode_rewards.append(reward)
+
+    def get_batch(self):
+        index = np.random.randint(0, len(self.states), self.batch_size)
+
+        states = np.array(self.states, dtype=float)[index]
+        probs = np.array(self.action_probs, dtype=float)[index]
+        rewards = np.array(self.rewards, dtype=float)[index]
+
+        states = T.FloatTensor(states)
+        probs = T.FloatTensor(probs)
+        rewards = T.FloatTensor(rewards)
+
+        return states, probs, rewards
+
+    def clear_memory(self):
+        self.states = []
+        self.action_probs = []
+        self.rewards = []
+
+    def store_episode(self, reward):
+        self.episode_rewards = [reward * R for R in self.episode_rewards]
+        #print(self.episode_rewards)
+
+        self.states += self.episode_states
+        self.action_probs += self.episode_action_probs
+        self.rewards += self.episode_rewards
+
+        self.episode_states = []
+        self.episode_action_probs = []
+        self.episode_rewards = []
+
+        
 class ActorCriticNetwork(nn.Module):
     def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions):
         super(ActorCriticNetwork, self).__init__()
         self.actor_network = nn.Sequential(
-            nn.Linear(*input_dims, fc1_dims),
+            nn.Linear(input_dims, fc1_dims),
             nn.Tanh(),
             nn.Linear(fc1_dims, fc2_dims),
             nn.Tanh(),
             nn.Linear(fc2_dims, n_actions),
-            nn.Softmax(dim-1)
+            nn.Softmax(dim=-1)
         )
 
         self.critic_network = nn.Sequential(
-            nn.Linear(*input_dims, fc1_dims),
+            nn.Linear(input_dims, fc1_dims),
             nn.Tanh(),
             nn.Linear(fc1_dims, fc2_dims),
             nn.Tanh(),
@@ -77,12 +124,12 @@ class ActorCriticNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, board):
-        state = T.FloatTensor(board.astype(np.float32)).to(self.device)
+        state = T.FloatTensor(board).to(self.device)
         return self.actor_network(state), self.critic_network(state)
 
 class Node:
-    def __init__(self, prev_state, prev_action, prior, to_play, game=ConnectN()):
-        self.game = game
+    def __init__(self, prior, to_play, prev_state=None, prev_action=None):
+        self.game = ConnectN()
 
         self.prior = prior
         self.to_play = to_play
@@ -91,15 +138,18 @@ class Node:
         self.visit_count = 0
         self.value_sum = 0
         if prev_state is not None:
-            self.state = game.get_next_state(prev_state, prev_action, to_play)
+            self.state = self.game.get_next_state(prev_state, prev_action, to_play)
         else:
-            self.state = game.init_state
+            self.state = self.game.init_state
         
-    def expand(self, probs):
+    def expand(self, probs=None):
+        if probs is None:
+            probs = np.random.uniform(0, 1, self.game.columns)
+            probs /= sum(probs)
         for action, prob in enumerate(probs):
             if prob != 0:
                 next_state = self.game.get_next_state(self.state, action, -self.to_play)
-                self.children[action] = Node(self.state, action, prob, -to_play)
+                self.children[action] = Node(prob, -self.to_play, next_state, action)
     
     def expanded(self):
         return len(self.children) > 0
@@ -123,7 +173,8 @@ class Node:
         for child in self.children.values():
             scores.append(self.calc_ucb(self, child))
         idx = scores.index(max(scores))
-        best_action, best_child = self.children.items()[idx]
+        best_action = list(self.children.keys())[idx]
+        best_child = list(self.children.values())[idx]
         return best_action, best_child
 
     def choose_action(self, temperature):
@@ -131,21 +182,24 @@ class Node:
         actions = [action for action in self.children.keys()]
         if temperature == 0:
             action = actions[np.argmax(visit_counts)]
+            probs = visit_counts / sum(visit_counts)
         elif temperature == float('inf'):
-            action = np.random.choice(actions)
+            probs = np.random.uniform(size=4)
+            probs /= sum(probs)
+            action = actions[np.argmax(probs)]
         else:
             visit_count_dist = visit_counts ** (1 / temperature)
-            visit_count_dist = visit_count_dist / sum(visit_count_dist)
+            visit_count_dist /= sum(visit_count_dist)
             action = np.random.choice(actions, p=visit_count_dist)
-        return action
+            probs = visit_count_dist
+        return action, probs
 
 
 class MCTS:
-    def __init__(self, n_simulations=5, game=ConnectN()):
+    def __init__(self, model, n_simulations=5, game=ConnectN()):
         self.n_simulations = n_simulations
         self.game = game
-        self.model = ActorCriticNetwork(lr=0.01, input_dims=[game.columns], \
-            fc1_dims=16, fc2_dims=16, n_actions=game.columns)
+        self.model = model
 
         '''
         For sim in n_simulations do:
@@ -163,7 +217,10 @@ class MCTS:
         '''
     def search(self, node=None):
         if node is None:
-            node = Node(prior=0, to_play=1, game=self.game)
+            node = Node(prior=0, to_play=1)
+        if not node.expanded():
+            node.expand()
+        root = node
 
         search_path = [node]
         ## Find a leaf node (SELECT)
@@ -184,39 +241,69 @@ class MCTS:
         
         ## BACKPROPOGATE
         self.backprop(search_path, value)
-        return node, value, search_path  
+        return root 
 
     def backprop(self, search_path, value):
         for node in reversed(search_path):
             node.value_sum += value * node.to_play
             node.visit_count += 1
 
-    def search(self, node=None):
+    def run(self, node=None):
         for _ in range(self.n_simulations):
-            child_node, value, search_path = self.select_expand_eval(node)
-            self.backprop(search_path, value)
+            root = self.search(node)
+        return root
 
-    def play_game(self, node=None):
-        while node.game.check_terminal(node.state, node.to_play) is False:
-            self.search(node)
-            action = node.choose_action(temperature=0)
-            ## New root node; set prior prob to 0
-            node = Node(node.state, action, prior=0, -node.to_play)
-    
-    def learn(self):
-        self.play_game(node=None)
 
-        
-class ReplayBuffer:
-    def __init__(self, batch_size):
+class Agent:
+    def __init__(self, lr, batch_size, fc1_dims=32, fc2_dims=32, n_simulations=100, game=ConnectN()):
+        self.actor_critic = ActorCriticNetwork(lr, game.columns, fc1_dims, fc2_dims, game.columns)
+        self.tree_search = MCTS(self.actor_critic, n_simulations, game)
+        self.memory = ReplayBuffer(batch_size)
         self.batch_size = batch_size
 
-        self.states = []
-        self.actions = []
-        self.probs = []
-        self.values = []
+    def play_game(self):
+        node = self.tree_search.run()
+        action, probs = node.choose_action(temperature=0)
+        self.memory.remember(node.state, probs, node.to_play)
+        node = Node(prior=probs[action], to_play=-node.to_play, prev_state=node.state, prev_action=action)
 
-        self.policy_probs = []
-        self.value_estimates = []
+        while node.game.check_terminal(node.state, node.to_play) is False:
+            node = self.tree_search.run(node)
+            action, probs = node.choose_action(temperature=0)
+            self.memory.remember(node.state, probs, node.to_play)
+            ## New root node; set prior prob to 0
+            node = Node(prior=probs[action], to_play=-node.to_play, prev_state=node.state, prev_action=action)
+        reward = node.game.check_terminal(node.state, node.to_play)
+        self.memory.store_episode(reward)
+
+    def learn(self):
+        states, target_probs, target_vals = self.memory.get_batch()
+        target_probs = target_probs.to(self.actor_critic.device)
+        target_vals = target_vals.to(self.actor_critic.device)
+        probs, vals = self.actor_critic.forward(states)
+
+        actor_loss = -(target_probs * T.log(probs)).mean()
+        critic_loss = T.mean((target_vals - vals.view(-1))**2) / self.batch_size
+        total_loss = actor_loss + critic_loss
+
+        self.actor_critic.optimizer.zero_grad()
+        total_loss.backward()
+        self.actor_critic.optimizer.step()
+
+
+if __name__ == '__main__':
+    agent = Agent(lr=1e-4, batch_size=64, fc1_dims=32, fc2_dims=32)
+    n_epochs = 500
+    learn_frequency = 100
+    learning_steps_per_batch = 2
+
+    for epoch in tqdm(range(n_epochs)):
+        for game in range(learn_frequency):
+            agent.play_game()
+        for _ in range(learning_steps_per_batch):
+            agent.learn()
+        if epoch % 5 == 0:
+            agent.memory.clear_memory()
+
 
 
