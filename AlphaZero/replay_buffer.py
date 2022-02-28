@@ -37,10 +37,7 @@ class ReplayBuffer:
         self.action_probs = []
         self.rewards = []
 
-    def store_episode(self, reward):
-        self.episode_rewards = [reward * R for R in self.episode_rewards]
-        #print(self.episode_rewards)
-
+    def store_episode(self):
         self.states += self.episode_states
         self.action_probs += self.episode_action_probs
         self.rewards += self.episode_rewards

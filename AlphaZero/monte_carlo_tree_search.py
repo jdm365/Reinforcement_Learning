@@ -2,17 +2,16 @@ import numpy as np
 from games import ConnectN
 
 class Node:
-    def __init__(self, prior, to_play, prev_state=None, prev_action=None, game=None):
+    def __init__(self, prior, prev_state=None, prev_action=None, game=None):
         self.game = game
 
         self.prior = prior
-        self.to_play = to_play
 
         self.children = {}
         self.visit_count = 0
         self.value_sum = 0
         if prev_state is not None:
-            self.state = self.game.get_next_state(prev_state, prev_action, to_play)
+            self.state = self.game.get_next_state(prev_state, prev_action)
         else:
             self.state = self.game.init_state 
 
@@ -22,8 +21,8 @@ class Node:
             probs /= sum(probs)
         for action, prob in enumerate(probs):
             if prob != 0:
-                next_state = self.game.get_next_state(self.state, action, -self.to_play)
-                self.children[action] = Node(prob, -self.to_play, next_state, action, self.game)
+                next_state = self.game.get_next_state(self.state, action)
+                self.children[action] = Node(prob, next_state, action, self.game)
     
     def expanded(self):
         return len(self.children) > 0
@@ -92,7 +91,7 @@ class MCTS:
         '''
     def search(self, node=None):
         if node is None:
-            node = Node(prior=0, to_play=1, game=self.game)
+            node = Node(prior=0, game=self.game)
         if not node.expanded():
             node.expand()
         root = node
@@ -104,9 +103,12 @@ class MCTS:
             search_path.append(node)
 
         ## EVALUATE
-        value = self.game.get_player_reward(node.state, node.to_play)
+        value = self.game.get_reward(node.state)
+        print(node.state, value)
         if value is None:
             probs, value = self.model.forward(node.state)
+            probs = probs.cpu().detach().numpy()
+            value = value.cpu().detach().numpy()
             valid_moves = self.game.get_valid_moves(node.state)
             probs *= valid_moves
             probs /= np.sum(probs)
@@ -119,8 +121,8 @@ class MCTS:
         return root 
 
     def backprop(self, search_path, value):
-        for node in reversed(search_path):
-            node.value_sum += value * node.to_play
+        for idx, node in enumerate(reversed(search_path)):
+            node.value_sum += value * (-1 ** (idx+1))
             node.visit_count += 1
 
     def run(self, node=None):

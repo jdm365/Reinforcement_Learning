@@ -7,11 +7,9 @@ class ConnectN:
         self.N = N
         self.init_state = np.zeros(self.columns, dtype=int)
 
-    def get_next_state(self, board, action, player):
-        board_ = np.copy(board)
-        board_[action] = player
-        player *= -1
-        return player * board_
+    def get_next_state(self, board, action):
+        board[action] = 1
+        return -board
 
     def get_valid_moves(self, board):
         valid_moves = np.zeros_like(board, dtype=int)
@@ -24,25 +22,22 @@ class ConnectN:
             return valid_moves
         return False
 
-    def check_terminal(self, board, player):
+    def check_terminal(self, board):
         for idx in range(self.columns-self.N):
             chunk = board[idx:idx+self.N]
-            victory = len([None for x in chunk if x == player]) == self.N
-            loss = len([None for x in chunk if x == -player]) == self.N
+            loss = len([None for x in chunk if x == -1]) == self.N
             draw = list(board).count(0) == 0
-            if victory:
-                return player
             if loss:
-                return -player
+                return -1
             elif draw:
-                return 0
+                ## If 0 is returned, it is seen as "False"
+                return None
         return False
 
-    def get_player_reward(self, board, player):
-        reward = self.check_terminal(board, player)
-        if reward == False:
+    def get_reward(self, board):
+        reward = self.check_terminal(board)
+        if reward is None:
             return 0
+        if reward == False:
+            return None
         return reward
-    
-    def get_board(self, board, player):
-        return player * board

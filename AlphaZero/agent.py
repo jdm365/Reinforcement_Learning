@@ -14,20 +14,28 @@ class Agent:
         self.batch_size = batch_size
         self.game = game
 
-    def play_game(self):
+    def backprop(self, search_path, value):
+        rewards = []
+        for idx, state in enumerate(reversed(search_path)):
+            rewards.append(value * (-1 ** (idx+1)))
+        return reversed(rewards)
+
+    def play_game(self, display_games=False):
         node = self.tree_search.run()
         action, probs = node.choose_action(temperature=0)
-        self.memory.remember(node.state, probs, node.to_play)
-        node = Node(prior=probs[action], to_play=-node.to_play, prev_state=node.state, prev_action=action, game=self.game)
+        self.memory.remember(node.state, probs, 1)
+        node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
 
-        while node.game.check_terminal(node.state, node.to_play) is False:
+        while node.game.check_terminal(node.state) is False:
             node = self.tree_search.run(node)
-            action, probs = node.choose_action(temperature=0)
-            self.memory.remember(node.state, probs, node.to_play)
-            ## New root node; set prior prob to 0
-            node = Node(prior=probs[action], to_play=-node.to_play, prev_state=node.state, prev_action=action, game=self.game)
-        reward = node.game.check_terminal(node.state, node.to_play)
-        self.memory.store_episode(reward)
+            action, probs = node.choose_action(temperature=0.1)
+            self.memory.remember(node.state, probs, 1)
+            node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
+        value = node.game.check_terminal(node.state)
+        self.memory.episode_rewards = self.backprop(self.memory.episode_states, value)
+        if display_games:
+            print(self.memory.episode_states)
+        self.memory.store_episode()
 
     def learn(self):
         states, target_probs, target_vals = self.memory.get_batch()
@@ -35,9 +43,9 @@ class Agent:
         target_vals = target_vals.to(self.actor_critic.device)
         probs, vals = self.actor_critic.forward(states)
 
-        actor_loss = -(target_probs * T.log(probs)).mean()
-        critic_loss = T.mean((target_vals - vals.view(-1))**2) / self.batch_size
-        total_loss = actor_loss + critic_loss
+        actor_loss = -(target_probs * T.log(probs)).sum(dim=1)
+        critic_loss = T.sum((target_vals - vals.view(-1))**2) / self.batch_size
+        total_loss = actor_loss.mean() + critic_loss.mean()
 
         self.actor_critic.optimizer.zero_grad()
         total_loss.backward()
