@@ -29,10 +29,13 @@ class ConnectN:
             chunk = board[idx:idx+self.N]
             victory = len([None for x in chunk if x == player]) == self.N
             loss = len([None for x in chunk if x == -player]) == self.N
+            draw = list(board).count(0) == 0
             if victory:
                 return player
             if loss:
                 return -player
+            elif draw:
+                return 0
         return False
 
     def get_player_reward(self, board, player):
