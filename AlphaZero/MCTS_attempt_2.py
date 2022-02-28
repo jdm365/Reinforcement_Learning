@@ -152,42 +152,39 @@ class MCTS:
             1) Selection -      Start from root node, use UCB to reach leaf node.
             2) Expansion -      If leaf node is terminal then backprop. Else create
                                 n_actions child nodes.
-            3) Simulation -     From newly expanded child nodes, run policy rollouts
+            3) Simulation -     NORMAL SEARCH: From newly expanded child nodes, run policy rollouts
                                 (simulations using policy network for both players)
                                 and update node value, n_vicoties/n_games_from_node.
+                                NEW METHOD: Rather than running simulations to get values of nodes,
+                                use value network to estimate value. Rather than 'rollout', this
+                                will be reffered to as 'evaluation'.
             4) Backpropogation- Update all nodes selected with result of simulation.
         end
         '''
-    def select_and_expand(self, node=None):
+    def search(self, node=None):
         if node is None:
             node = Node(prior=0, to_play=1, game=self.game)
 
         search_path = [node]
-        ## Find a leaf node
+        ## Find a leaf node (SELECT)
         while node.expanded():
             _, node = node.select_child()
             search_path.append(node)
 
-        probs, _ = self.model.forward(node.state)
-        valid_moves = self.game.get_valid_moves(node.state)
-        probs *= valid_moves
-        probs /= np.sum(probs)
-        node.expand(probs)
-        return node.children, search_path
-
-    def rollout(self, node):
-        value = None
-        while value is None:
-            action, node = node.select_child()
-            next_state = self.game.get_next_state(node.state, node.to_play, action)
-            value = self.game.get_player_reward(next_state, node.to_play)
-
-            probs, value = self.model.forward(next_state)
-            valid_moves = self.game.get_valid_moves(next_state)
+        ## EVALUATE
+        value = self.game.get_player_reward(node.state, node.to_play)
+        if value is None:
+            probs, value = self.model.forward(node.state)
+            valid_moves = self.game.get_valid_moves(node.state)
             probs *= valid_moves
             probs /= np.sum(probs)
+
+            ## EXPAND
             node.expand(probs)
-        return value
+        
+        ## BACKPROPOGATE
+        self.backprop(search_path, value)
+        return node, value, search_path  
 
     def backprop(self, search_path, value):
         for node in reversed(search_path):
@@ -196,7 +193,30 @@ class MCTS:
 
     def search(self, node=None):
         for _ in range(self.n_simulations):
-            child_nodes, search_path = self.select_and_expand(node)
-            for idx, node in child_nodes.items():
-                value = self.rollout(node)
-                self.backprop(search_path, value)
+            child_node, value, search_path = self.select_expand_eval(node)
+            self.backprop(search_path, value)
+
+    def play_game(self, node=None):
+        while node.game.check_terminal(node.state, node.to_play) is False:
+            self.search(node)
+            action = node.choose_action(temperature=0)
+            ## New root node; set prior prob to 0
+            node = Node(node.state, action, prior=0, -node.to_play)
+    
+    def learn(self):
+        self.play_game(node=None)
+
+        
+class ReplayBuffer:
+    def __init__(self, batch_size):
+        self.batch_size = batch_size
+
+        self.states = []
+        self.actions = []
+        self.probs = []
+        self.values = []
+
+        self.policy_probs = []
+        self.value_estimates = []
+
+
