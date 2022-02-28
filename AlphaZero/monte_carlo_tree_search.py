@@ -84,7 +84,8 @@ class MCTS:
                                 (simulations using policy network for both players)
                                 and update node value, n_vicoties/n_games_from_node.
                                 NEW METHOD: Rather than running simulations to get values of nodes,
-                                use value network to estimate value. Rather than 'rollout', this
+                                use value network to estimate value (unless state is terminal, in 
+                                which case value is known). Rather than 'rollout', this
                                 will be reffered to as 'evaluation'.
             4) Backpropogation- Update all nodes selected with result of simulation.
         end
