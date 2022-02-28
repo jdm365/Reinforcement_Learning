@@ -2,8 +2,8 @@ import numpy as np
 from games import ConnectN
 
 class Node:
-    def __init__(self, prior, to_play, prev_state=None, prev_action=None):
-        self.game = ConnectN()
+    def __init__(self, prior, to_play, prev_state=None, prev_action=None, game=None):
+        self.game = game
 
         self.prior = prior
         self.to_play = to_play
@@ -14,8 +14,8 @@ class Node:
         if prev_state is not None:
             self.state = self.game.get_next_state(prev_state, prev_action, to_play)
         else:
-            self.state = self.game.init_state
-        
+            self.state = self.game.init_state 
+
     def expand(self, probs=None):
         if probs is None:
             probs = np.random.uniform(0, 1, self.game.columns)
@@ -23,7 +23,7 @@ class Node:
         for action, prob in enumerate(probs):
             if prob != 0:
                 next_state = self.game.get_next_state(self.state, action, -self.to_play)
-                self.children[action] = Node(prob, -self.to_play, next_state, action)
+                self.children[action] = Node(prob, -self.to_play, next_state, action, self.game)
     
     def expanded(self):
         return len(self.children) > 0
@@ -92,7 +92,7 @@ class MCTS:
         '''
     def search(self, node=None):
         if node is None:
-            node = Node(prior=0, to_play=1)
+            node = Node(prior=0, to_play=1, game=self.game)
         if not node.expanded():
             node.expand()
         root = node

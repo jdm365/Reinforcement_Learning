@@ -12,19 +12,20 @@ class Agent:
         self.tree_search = MCTS(self.actor_critic, n_simulations, game)
         self.memory = ReplayBuffer(batch_size)
         self.batch_size = batch_size
+        self.game = game
 
     def play_game(self):
         node = self.tree_search.run()
         action, probs = node.choose_action(temperature=0)
         self.memory.remember(node.state, probs, node.to_play)
-        node = Node(prior=probs[action], to_play=-node.to_play, prev_state=node.state, prev_action=action)
+        node = Node(prior=probs[action], to_play=-node.to_play, prev_state=node.state, prev_action=action, game=self.game)
 
         while node.game.check_terminal(node.state, node.to_play) is False:
             node = self.tree_search.run(node)
             action, probs = node.choose_action(temperature=0)
             self.memory.remember(node.state, probs, node.to_play)
             ## New root node; set prior prob to 0
-            node = Node(prior=probs[action], to_play=-node.to_play, prev_state=node.state, prev_action=action)
+            node = Node(prior=probs[action], to_play=-node.to_play, prev_state=node.state, prev_action=action, game=self.game)
         reward = node.game.check_terminal(node.state, node.to_play)
         self.memory.store_episode(reward)
 
