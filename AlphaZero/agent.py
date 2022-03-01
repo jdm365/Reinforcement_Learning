@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.misc import face
 import torch as T
 from replay_buffer import ReplayBuffer
 from networks import ActorCriticNetwork
@@ -18,29 +19,32 @@ class Agent:
     def backprop(self, search_path, value):
         rewards = []
         for idx, state in enumerate(reversed(search_path)):
-            rewards.append(value * (-1 ** (idx+1)))
+            factor = pow(-1, idx)
+            rewards.append(value * factor)
         return list(reversed(rewards))
 
-    def play_game(self):
+    def play_game(self, test=False):
         ## Always start from root node.
+        temperature = 1.4 * (1-int(test))
         node = self.tree_search.run()
-        action, probs = node.choose_action(temperature=1.4)
+        action, probs = node.choose_action(temperature)
         self.memory.remember(node.state, probs)
         ## New root node
         node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
+        value = self.game.get_reward(node.state)
 
-        while self.game.check_terminal(node.state) is False:
+        while value is None:
             node = self.tree_search.run(node)
-            action, probs = node.choose_action(temperature=1.4)
+            action, probs = node.choose_action(temperature)
             self.memory.remember(node.state, probs)
             ## New root node
             node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
-
-        value = self.game.get_reward(node.state)
+            value = self.game.get_reward(node.state)
         self.memory.episode_rewards = self.backprop(self.memory.episode_states, value)
-        winner = self.memory.episode_rewards[-1]
+        winner = self.memory.episode_rewards[0]
+        if test:
+            print(self.memory.episode_states, winner)
         self.memory.store_episode()
-
         return winner
 
     def learn(self):

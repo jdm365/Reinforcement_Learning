@@ -11,20 +11,22 @@ class Node:
         self.children = {}
         self.visit_count = 0
         self.value_sum = 0
-        if prev_state is not None:
-            self.state = self.game.get_next_state(prev_state, prev_action)
-        else:
-            self.state = self.game.init_state
+        self.state = self.game.get_next_state(prev_state, prev_action)
+        if prev_state is None:
+            self.state = np.zeros(self.game.columns, dtype=int)
+
+    def reset_state(self, state):
+        self.state = state
 
     def expand(self, probs=None):
         if probs is None:
             probs = np.random.uniform(0, 1, self.game.columns)
             probs /= sum(probs)
         for action, prob in enumerate(probs):
+            init_state = np.copy(self.state)
             if prob != 0:
-                init_state = np.array(self.state, dtype=int)
                 self.children[action] = Node(prob, self.state, action, self.game)
-                self.state = init_state
+            self.reset_state(init_state)
     
     def expanded(self):
         return len(self.children) > 0
@@ -56,15 +58,12 @@ class Node:
         visit_counts = np.array([child.visit_count for child in self.children.values()])
         actions = [action for action in self.children.keys()]
 
+        probs = np.zeros(4, dtype=int)
         if temperature == 0:
             action = actions[np.argmax(visit_counts)]
-            probs = visit_counts / sum(visit_counts)
-        elif temperature == float('inf'):
-            probs = np.random.uniform(size=len(actions))
-            probs /= sum(probs)
-            action = actions[np.argmax(probs)]
+            visit_count_dist = visit_counts / sum(visit_counts)
+            probs[actions] = visit_count_dist
         else:
-            probs = np.zeros(4, dtype=int)
             visit_count_dist = visit_counts ** (1 / temperature)
             visit_count_dist /= sum(visit_count_dist)
             action = np.random.choice(actions, p=visit_count_dist)
@@ -95,28 +94,30 @@ class MCTS:
         '''
 
     def search(self, root):
-        node = root
-        search_path = [node]
-        ## Find a leaf node (SELECT)
-        while node.expanded():
-            _, node = node.select_child()
-            search_path.append(node)
-        
-        ## EVALUATE
-        value = self.game.get_reward(node.state)
-        if value is None:
-            probs, value = self.model.forward(node.state)
-            probs = probs.cpu().detach().numpy()
-            value = value.cpu().detach().numpy()
-            valid_moves = self.game.get_valid_moves(node.state)
-            probs *= valid_moves
-            probs /= np.sum(probs)
+        for _ in range(self.n_simulations):
+            node = root
+            search_path = [node]
+            ## Find a leaf node (SELECT)
+            while node.expanded():
+                _, node = node.select_child()
+                search_path.append(node)
+            
+            ## EVALUATE
+            value = self.game.get_reward(node.state)
+            if value is None:
+                probs, value = self.model.forward(node.state)
+                probs = probs.cpu().detach().numpy()
+                value = value.cpu().detach().numpy()
+                valid_moves = self.game.get_valid_moves(node.state)
+                probs *= valid_moves
+                probs /= np.sum(probs)
 
-            ## EXPAND
-            node.expand(probs)
-        
-        ## BACKPROPOGATE
-        self.backprop(search_path, value)
+                ## EXPAND
+                node.expand(probs)
+            
+            ## BACKPROPOGATE
+            self.backprop(search_path, value)
+        return root
 
     def backprop(self, search_path, value):
         for idx, node in enumerate(reversed(search_path)):
@@ -127,6 +128,6 @@ class MCTS:
         if root is None:
             root = Node(prior=0, game=self.game)
             root.expand()
-        for _ in range(self.n_simulations):
-            self.search(root)
+        root.prior = 0
+        root = self.search(root)
         return root

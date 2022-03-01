@@ -7,7 +7,9 @@ class ConnectN:
         self.N = N
         self.init_state = np.zeros(self.columns, dtype=int)
 
-    def get_next_state(self, board, action):
+    def get_next_state(self, board=None, action=None):
+        if board is None and action is None:
+            return self.init_state
         board[action] = 1
         return -board
 
@@ -25,21 +27,21 @@ class ConnectN:
     def check_terminal(self, board):
         for idx in range(self.columns-self.N+1):
             chunk = board[idx:idx+self.N]
-            loss = [val == -1 for val in chunk]
-            loss = False not in loss
-            if loss:
-                return 'loss'
+            win = [val == -1 for val in chunk]
+            win = False not in win
+            if win:
+                return 'win'
 
         if list(board).count(0) == 0:
-            if not loss:
+            if not win:
                 return 'draw'
         return False
 
     def get_reward(self, board):
-        reward = self.check_terminal(board)
-        if reward == 'draw':
+        result = self.check_terminal(board)
+        if result == 'draw':
             return 0
-        elif reward == 'loss':
-            return -1
-        elif reward == False:
+        elif result == 'win':
+            return 1
+        elif result == False:
             return None

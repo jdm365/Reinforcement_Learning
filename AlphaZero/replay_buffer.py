@@ -3,7 +3,7 @@ import torch as T
 
 
 class ReplayBuffer:
-    def __init__(self, batch_size):
+    def __init__(self, batch_size, max_mem_length=25000):
         self.batch_size = batch_size
 
         self.states = []
@@ -13,6 +13,8 @@ class ReplayBuffer:
         self.episode_states = []
         self.episode_action_probs = []
         self.episode_rewards = []
+        
+        self.max_length= max_mem_length
  
     def remember(self, state, action_probs):
         self.episode_states.append(state)
@@ -31,15 +33,14 @@ class ReplayBuffer:
 
         return states, probs, rewards
 
-    def clear_memory(self):
-        self.states = []
-        self.action_probs = []
-        self.rewards = []
-
     def store_episode(self):
         self.states += self.episode_states
         self.action_probs += self.episode_action_probs
         self.rewards += self.episode_rewards
+
+        self.states = self.states[-self.max_length:]
+        self.action_probs = self.action_probs[-self.max_length:]
+        self.rewards = self.rewards[-self.max_length:]
 
         self.episode_states = []
         self.episode_action_probs = []
