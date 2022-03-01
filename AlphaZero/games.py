@@ -25,8 +25,11 @@ class ConnectN:
     def check_terminal(self, board):
         for idx in range(self.columns-self.N):
             chunk = board[idx:idx+self.N]
+            victory = len([None for x in chunk if x == 1]) == self.N
             loss = len([None for x in chunk if x == -1]) == self.N
             draw = list(board).count(0) == 0
+            if victory:
+                return 1
             if loss:
                 return -1
             elif draw:

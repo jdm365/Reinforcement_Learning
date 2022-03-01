@@ -4,6 +4,7 @@ from replay_buffer import ReplayBuffer
 from networks import ActorCriticNetwork
 from games import ConnectN
 from monte_carlo_tree_search import MCTS, Node
+import sys
 
 
 class Agent:
@@ -18,24 +19,29 @@ class Agent:
         rewards = []
         for idx, state in enumerate(reversed(search_path)):
             rewards.append(value * (-1 ** (idx+1)))
-        return reversed(rewards)
+        return list(reversed(rewards))
 
-    def play_game(self, display_games=False):
+    def play_game(self):
+        ## Always start from root node.
         node = self.tree_search.run()
         action, probs = node.choose_action(temperature=0)
-        self.memory.remember(node.state, probs, 1)
+        self.memory.remember(node.state, probs)
+        ## New root node
         node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
 
         while node.game.check_terminal(node.state) is False:
             node = self.tree_search.run(node)
             action, probs = node.choose_action(temperature=0.1)
-            self.memory.remember(node.state, probs, 1)
+            self.memory.remember(node.state, probs)
+            ## New root node
             node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
-        value = node.game.check_terminal(node.state)
+
+        value = node.game.get_reward(node.state)
         self.memory.episode_rewards = self.backprop(self.memory.episode_states, value)
-        if display_games:
-            print(self.memory.episode_states)
+        winner = self.memory.episode_rewards[-1]
         self.memory.store_episode()
+
+        return winner
 
     def learn(self):
         states, target_probs, target_vals = self.memory.get_batch()
@@ -46,6 +52,7 @@ class Agent:
         actor_loss = -(target_probs * T.log(probs)).sum(dim=1)
         critic_loss = T.sum((target_vals - vals.view(-1))**2) / self.batch_size
         total_loss = actor_loss.mean() + critic_loss.mean()
+        print(critic_loss)
 
         self.actor_critic.optimizer.zero_grad()
         total_loss.backward()

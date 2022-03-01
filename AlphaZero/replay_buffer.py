@@ -14,10 +14,9 @@ class ReplayBuffer:
         self.episode_action_probs = []
         self.episode_rewards = []
  
-    def remember(self, state, action_probs, reward):
+    def remember(self, state, action_probs):
         self.episode_states.append(state)
         self.episode_action_probs.append(action_probs)
-        self.episode_rewards.append(reward)
 
     def get_batch(self):
         index = np.random.randint(0, len(self.states), self.batch_size)
