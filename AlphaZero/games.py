@@ -23,24 +23,23 @@ class ConnectN:
         return False
 
     def check_terminal(self, board):
-        for idx in range(self.columns-self.N):
+        for idx in range(self.columns-self.N+1):
             chunk = board[idx:idx+self.N]
-            victory = len([None for x in chunk if x == 1]) == self.N
-            loss = len([None for x in chunk if x == -1]) == self.N
-            draw = list(board).count(0) == 0
-            if victory:
-                return 1
+            loss = [val == -1 for val in chunk]
+            loss = False not in loss
             if loss:
-                return -1
-            elif draw:
-                ## If 0 is returned, it is seen as "False"
-                return None
+                return 'loss'
+
+        if list(board).count(0) == 0:
+            if not loss:
+                return 'draw'
         return False
 
     def get_reward(self, board):
         reward = self.check_terminal(board)
-        if reward is None:
+        if reward == 'draw':
             return 0
-        if reward == False:
+        elif reward == 'loss':
+            return -1
+        elif reward == False:
             return None
-        return reward

@@ -24,19 +24,19 @@ class Agent:
     def play_game(self):
         ## Always start from root node.
         node = self.tree_search.run()
-        action, probs = node.choose_action(temperature=0)
+        action, probs = node.choose_action(temperature=1.4)
         self.memory.remember(node.state, probs)
         ## New root node
         node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
 
-        while node.game.check_terminal(node.state) is False:
+        while self.game.check_terminal(node.state) is False:
             node = self.tree_search.run(node)
-            action, probs = node.choose_action(temperature=0.1)
+            action, probs = node.choose_action(temperature=1.4)
             self.memory.remember(node.state, probs)
             ## New root node
             node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
 
-        value = node.game.get_reward(node.state)
+        value = self.game.get_reward(node.state)
         self.memory.episode_rewards = self.backprop(self.memory.episode_states, value)
         winner = self.memory.episode_rewards[-1]
         self.memory.store_episode()
@@ -52,7 +52,6 @@ class Agent:
         actor_loss = -(target_probs * T.log(probs)).sum(dim=1)
         critic_loss = T.sum((target_vals - vals.view(-1))**2) / self.batch_size
         total_loss = actor_loss.mean() + critic_loss.mean()
-        print(critic_loss)
 
         self.actor_critic.optimizer.zero_grad()
         total_loss.backward()

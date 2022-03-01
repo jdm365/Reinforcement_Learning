@@ -5,7 +5,7 @@ from agent import Agent
 
 
 if __name__ == '__main__':
-    agent = Agent(lr=1e-4, batch_size=64, fc1_dims=32, fc2_dims=32, n_simulations=100)
+    agent = Agent(lr=1e-2, batch_size=64, fc1_dims=32, fc2_dims=32, n_simulations=100)
     n_epochs = 500
     learn_frequency = 100
     learning_steps_per_batch = 25
