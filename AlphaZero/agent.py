@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.misc import face
 import torch as T
 from replay_buffer import ReplayBuffer
 from networks import ActorCriticNetwork
@@ -18,8 +17,8 @@ class Agent:
 
     def backprop(self, search_path, value):
         rewards = []
-        for idx, state in enumerate(reversed(search_path)):
-            factor = pow(-1, idx)
+        for i in range(len(search_path)):
+            factor = pow(-1, i)
             rewards.append(value * factor)
         return list(reversed(rewards))
 
@@ -42,6 +41,7 @@ class Agent:
             value = self.game.get_reward(node.state)
         self.memory.episode_rewards = self.backprop(self.memory.episode_states, value)
         winner = self.memory.episode_rewards[0]
+
         if test:
             print(self.memory.episode_states, winner)
         self.memory.store_episode()

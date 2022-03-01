@@ -128,6 +128,5 @@ class MCTS:
         if root is None:
             root = Node(prior=0, game=self.game)
             root.expand()
-        root.prior = 0
         root = self.search(root)
         return root
