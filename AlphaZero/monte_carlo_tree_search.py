@@ -12,8 +12,6 @@ class Node:
         self.visit_count = 0
         self.value_sum = 0
         self.state = self.game.get_next_state(prev_state, prev_action)
-        if prev_state is None:
-            self.state = np.zeros(self.game.columns, dtype=int)
 
     def reset_state(self, state):
         self.state = state
@@ -76,7 +74,7 @@ class Node:
 
 
 class MCTS:
-    def __init__(self, model, n_simulations, game=ConnectN()):
+    def __init__(self, model, n_simulations, game):
         self.n_simulations = n_simulations
         self.game = game
         self.model = model

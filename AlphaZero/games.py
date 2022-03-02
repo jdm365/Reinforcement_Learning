@@ -55,9 +55,11 @@ class Connect4:
         self.init_state = np.zeros((self.rows, self.columns), dtype=int)
 
     def get_next_state(self, board, action):
+        if board is None and action is None:
+            return self.init_state
         board_ = np.copy(board)
-        column_to_place = board[:, action]
-        rev_idx = np.linspace(0, 7, dtype=int)
+        column_to_place = board_[:, action]
+        rev_idx = [i for i in range(self.rows)]
         for idx, space in enumerate(reversed(column_to_place)):
             val = rev_idx[-(idx+1)]
             if space == 0:
@@ -67,7 +69,7 @@ class Connect4:
 
     def get_valid_moves(self, board):
         moves_available = False
-        valid_moves = np.linspace(0, 7, dtype=int)
+        valid_moves = [0 for i in range(self.columns)]
         for col in range(self.columns):
             if list(board[:, col]).count(0) != 0:
                 valid_moves[col] = 1
@@ -97,8 +99,8 @@ class Connect4:
                     return 'win'
         
         ## Diagonal check (down right)
-        for row in range(self.columns - 3):
-            for col in range(self.rows - 3):
+        for col in range(self.columns - 3):
+            for row in range(self.rows - 3):
                 chunk = [board[i+row, i+col] for i in range(4)]
                 win = [val == -1 for val in chunk]
                 win = False not in win
@@ -107,8 +109,8 @@ class Connect4:
 
         ## Diagonal check (down left); note: just refelct board horizontally
         inverted_board = np.fliplr(np.copy(board))
-        for row in range(self.columns - 3):
-            for col in range(self.rows - 3):
+        for col in range(self.columns - 3):
+            for row in range(self.rows - 3):
                 chunk = [inverted_board[i+row, i+col] for i in range(4)]
                 win = [val == -1 for val in chunk]
                 win = False not in win

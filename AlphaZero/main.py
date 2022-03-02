@@ -3,7 +3,7 @@ from agent import Agent
 
 
 if __name__ == '__main__':
-    agent = Agent(lr=1e-2, batch_size=64, fc1_dims=32, fc2_dims=32, n_simulations=10)
+    agent = Agent(lr=1e-3, batch_size=64, fc1_dims=256, fc2_dims=256, n_simulations=50)
     n_epochs = 1000
     test = False
 
