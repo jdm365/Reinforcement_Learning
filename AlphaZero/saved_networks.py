@@ -35,10 +35,12 @@ class ConnectN1dNetwork(nn.Module):
 class Connect4NetworkConvolutional(nn.Module):
     def __init__(self, input_dims, n_actions):
         super(Connect4NetworkConvolutional, self).__init__()
+        input_dims = input_dims[0] * input_dims[1]
         self.actor_head = nn.Sequential(
             nn.Conv2d(in_channels=256, out_channels=1, kernel_size=1),
             nn.BatchNorm2d(1),
             nn.Tanh(),
+            nn.Flatten(),
             nn.Linear(input_dims, n_actions),
             nn.Softmax(dim=-1)
         )
@@ -47,6 +49,7 @@ class Connect4NetworkConvolutional(nn.Module):
             nn.Conv2d(in_channels=256, out_channels=1, kernel_size=1),
             nn.BatchNorm2d(1),
             nn.Tanh(),
+            nn.Flatten(),
             nn.Linear(input_dims, 1),
             nn.Tanh()
         )

@@ -2,6 +2,7 @@ import torch as T
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+import sys
 from saved_networks import ConnectN1dNetwork, Connect4NetworkConvolutional
 
 class ActorCriticNetwork(nn.Module):
@@ -31,9 +32,9 @@ class ActorCriticNetwork(nn.Module):
         out = F.relu(self.conv_block_3(out) + out)
         out = F.relu(self.conv_block_4(out) + out)
 
-        probs = self.actor_head(out)[0][0][0]
-        value = self.critic_head(out)[0][0][0]
-        return probs, value
+        probs = self.actor_head(out)
+        value = self.critic_head(out)
+        return probs[0], value[0]
 
     def prep_state(self, state):
         state = T.FloatTensor(state).to(self.device)
