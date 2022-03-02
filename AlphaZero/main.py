@@ -1,12 +1,10 @@
-from unittest import result
-import numpy as np
 from tqdm import tqdm
 from agent import Agent
 
 
 if __name__ == '__main__':
-    agent = Agent(lr=1e-4, batch_size=64, fc1_dims=32, fc2_dims=32, n_simulations=20)
-    n_epochs = 10000   
+    agent = Agent(lr=1e-2, batch_size=64, fc1_dims=32, fc2_dims=32, n_simulations=10)
+    n_epochs = 1000
     test = False
 
     for epoch in tqdm(range(n_epochs)):

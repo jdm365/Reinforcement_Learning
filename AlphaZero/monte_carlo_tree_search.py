@@ -58,7 +58,7 @@ class Node:
         visit_counts = np.array([child.visit_count for child in self.children.values()])
         actions = [action for action in self.children.keys()]
 
-        probs = list(np.zeros(4, dtype=int))
+        probs = list(np.zeros(self.game.columns, dtype=int))
         if temperature == 0:
             action = actions[np.argmax(visit_counts)]
             visit_count_dist = visit_counts / sum(visit_counts)
@@ -76,7 +76,7 @@ class Node:
 
 
 class MCTS:
-    def __init__(self, model, n_simulations=5, game=ConnectN()):
+    def __init__(self, model, n_simulations, game=ConnectN()):
         self.n_simulations = n_simulations
         self.game = game
         self.model = model
@@ -109,7 +109,9 @@ class MCTS:
             ## EVALUATE
             value = self.game.get_reward(node.state)
             if value is None:
+                self.model.eval()
                 probs, value = self.model.forward(node.state)
+                self.model.train()
                 probs = probs.cpu().detach().numpy()
                 value = value.cpu().detach().numpy()
                 valid_moves = self.game.get_valid_moves(node.state)
@@ -125,12 +127,11 @@ class MCTS:
 
     def backprop(self, search_path, value):
         for idx, node in enumerate(reversed(search_path)):
-            node.value_sum += value * (-1 ** (idx+1))
+            node.value_sum += value * pow(-1, idx+1)
             node.visit_count += 1
 
     def run(self, root=None):
         if root is None:
             root = Node(prior=0, game=self.game)
-            root.expand()
         root = self.search(root)
         return root

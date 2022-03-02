@@ -14,7 +14,7 @@ class ReplayBuffer:
         self.episode_action_probs = []
         self.episode_rewards = []
         
-        self.max_length= max_mem_length
+        self.max_length = max_mem_length
  
     def remember(self, state, action_probs):
         self.episode_states.append(state)
