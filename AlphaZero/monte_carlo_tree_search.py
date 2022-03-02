@@ -58,16 +58,20 @@ class Node:
         visit_counts = np.array([child.visit_count for child in self.children.values()])
         actions = [action for action in self.children.keys()]
 
-        probs = np.zeros(4, dtype=int)
+        probs = list(np.zeros(4, dtype=int))
         if temperature == 0:
             action = actions[np.argmax(visit_counts)]
             visit_count_dist = visit_counts / sum(visit_counts)
-            probs[actions] = visit_count_dist
+            for idx, act in enumerate(actions):
+                probs[act] = visit_count_dist[idx]
+            probs = np.array(probs)
         else:
             visit_count_dist = visit_counts ** (1 / temperature)
             visit_count_dist /= sum(visit_count_dist)
             action = np.random.choice(actions, p=visit_count_dist)
-            probs[actions] = visit_count_dist
+            for idx, act in enumerate(actions):
+                probs[act] = visit_count_dist[idx]
+            probs = np.array(probs)
         return action, probs
 
 

@@ -5,12 +5,12 @@ from agent import Agent
 
 
 if __name__ == '__main__':
-    agent = Agent(lr=1e-2, batch_size=64, fc1_dims=32, fc2_dims=32, n_simulations=20)
+    agent = Agent(lr=1e-4, batch_size=64, fc1_dims=32, fc2_dims=32, n_simulations=20)
     n_epochs = 10000   
     test = False
 
     for epoch in tqdm(range(n_epochs)):
-        winner = agent.play_game(test)
+        agent.play_game(test)
         if len(agent.memory.states) > agent.batch_size:
             agent.learn()
 

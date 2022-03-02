@@ -45,7 +45,6 @@ class Agent:
         if test:
             print(self.memory.episode_states, winner)
         self.memory.store_episode()
-        return winner
 
     def learn(self):
         states, target_probs, target_vals = self.memory.get_batch()
@@ -55,7 +54,7 @@ class Agent:
 
         actor_loss = -(target_probs * T.log(probs)).sum(dim=1)
         critic_loss = T.sum((target_vals - vals.view(-1))**2) / self.batch_size
-        total_loss = actor_loss.mean() + critic_loss.mean()
+        total_loss = actor_loss.mean() + critic_loss
 
         self.actor_critic.optimizer.zero_grad()
         total_loss.backward()
