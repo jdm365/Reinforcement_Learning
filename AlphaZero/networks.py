@@ -48,4 +48,4 @@ class ActorCriticNetwork(nn.Module):
         T.save(self.state_dict(), self.filename)
 
     def load_models(self):
-        T.load_state_dict(T.load(self.filename))
+        self.load_state_dict(T.load(self.filename))
