@@ -54,6 +54,9 @@ class Connect4NetworkConvolutional(nn.Module):
             nn.Tanh()
         )
 
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
 
     def block(self, in_filters=256):
         block = nn.Sequential(
@@ -73,6 +76,7 @@ class Connect4NetworkConvolutional(nn.Module):
             nn.Conv2d(in_channels=in_chan, out_channels=out_chan, kernel_size=1, stride=stride),
             nn.BatchNorm2d(out_chan)
         )
+        downsample = downsample.to(self.device)
         return downsample(state)
 
     def connect_residual(self, state, block_output, out_chan=256, stride=1):

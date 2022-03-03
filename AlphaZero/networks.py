@@ -28,19 +28,19 @@ class ActorCriticNetwork(nn.Module):
         state = self.prep_state(board)
 
         out = self.conv_block_1(state)
-        out = self.network.connect_residual(state, out)
+        state_ = self.network.connect_residual(state, out)
 
         out = self.conv_block_2(out)
-        out = self.network.connect_residual(out)
+        state_ = self.network.connect_residual(state_, out)
 
         out = self.conv_block_3(out)
-        out = self.network.connect_residual(out)
+        state_ = self.network.connect_residual(state_, out)
 
         out = self.conv_block_4(out)
-        out = self.network.connect_residual(out)
+        state_ = self.network.connect_residual(state_, out)
 
-        probs = self.actor_head(out)[0]
-        value = self.critic_head(out)[0]
+        probs = self.actor_head(state_)[0]
+        value = self.critic_head(state_)[0]
         return probs, value
 
     def prep_state(self, state):
