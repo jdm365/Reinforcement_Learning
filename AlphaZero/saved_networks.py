@@ -65,3 +65,13 @@ class Connect4NetworkConvolutional(nn.Module):
         )
         return block
 
+    def downsample(self, state, out_chan=256, stride=1):
+        in_chan = state.shape[1]
+        if in_chan == out_chan:
+            return state
+        downsample = nn.Sequential(
+            nn.Conv2d(in_channels=in_chan, out_channels=out_chan, kernel_size=1, stride=stride),
+            nn.BatchNorm2d(out_chan)
+        )
+        return downsample(state)
+

@@ -10,15 +10,15 @@ class ActorCriticNetwork(nn.Module):
         super(ActorCriticNetwork, self).__init__()
         self.filename = 'Trained_Models/actor_critic'
         self.input_dims = input_dims
-        network = Connect4NetworkConvolutional(input_dims, n_actions)
+        self.network = Connect4NetworkConvolutional(input_dims, n_actions)
 
-        self.conv_block_1 = network.block(in_filters=1)
-        self.conv_block_2 = network.block()
-        self.conv_block_3 = network.block()
-        self.conv_block_4 = network.block()
+        self.conv_block_1 = self.network.block(in_filters=1)
+        self.conv_block_2 = self.network.block()
+        self.conv_block_3 = self.network.block()
+        self.conv_block_4 = self.network.block()
 
-        self.actor_head = network.actor_head
-        self.critic_head = network.critic_head
+        self.actor_head = self.network.actor_head
+        self.critic_head = self.network.critic_head
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
@@ -27,10 +27,10 @@ class ActorCriticNetwork(nn.Module):
     def forward(self, board):
         state = self.prep_state(board)
 
-        out = F.relu(self.conv_block_1(state) + state)
-        out = F.relu(self.conv_block_2(out) + out)
-        out = F.relu(self.conv_block_3(out) + out)
-        out = F.relu(self.conv_block_4(out) + out)
+        out = F.relu(self.conv_block_1(state) + self.network.downsample(state))
+        out = F.relu(self.conv_block_2(out) + self.network.downsample(out))
+        out = F.relu(self.conv_block_3(out) + self.network.downsample(out))
+        out = F.relu(self.conv_block_4(out) + self.network.downsample(out))
 
         probs = self.actor_head(out)
         value = self.critic_head(out)
