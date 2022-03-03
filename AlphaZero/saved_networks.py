@@ -40,7 +40,7 @@ class Connect4NetworkConvolutional(nn.Module):
             nn.Conv2d(in_channels=256, out_channels=1, kernel_size=1),
             nn.BatchNorm2d(1),
             nn.Tanh(),
-            nn.Flatten(),
+            nn.Flatten(start_dim=1),
             nn.Linear(input_dims, n_actions),
             nn.Softmax(dim=-1)
         )
@@ -49,7 +49,7 @@ class Connect4NetworkConvolutional(nn.Module):
             nn.Conv2d(in_channels=256, out_channels=1, kernel_size=1),
             nn.BatchNorm2d(1),
             nn.Tanh(),
-            nn.Flatten(),
+            nn.Flatten(start_dim=1),
             nn.Linear(input_dims, 1),
             nn.Tanh()
         )
