@@ -27,10 +27,17 @@ class ActorCriticNetwork(nn.Module):
     def forward(self, board):
         state = self.prep_state(board)
 
-        out = F.relu(self.conv_block_1(state) + self.network.downsample(state))
-        out = F.relu(self.conv_block_2(out) + self.network.downsample(out))
-        out = F.relu(self.conv_block_3(out) + self.network.downsample(out))
-        out = F.relu(self.conv_block_4(out) + self.network.downsample(out))
+        out = self.conv_block_1(state)
+        out = self.network.connect_residual(state, out)
+
+        out = self.conv_block_2(out)
+        out = self.network.connect_residual(out)
+
+        out = self.conv_block_3(out)
+        out = self.network.connect_residual(out)
+
+        out = self.conv_block_4(out)
+        out = self.network.connect_residual(out)
 
         probs = self.actor_head(out)[0]
         value = self.critic_head(out)[0]
