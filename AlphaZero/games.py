@@ -91,7 +91,7 @@ class Connect4:
         ## Vertical check
         for col in range(self.columns):
             board_col = np.copy(board[:, col])
-            for idx in range(self.columns-4+1):
+            for idx in range(self.rows-4+1):
                 chunk = board_col[idx:idx+4]
                 win = [val == -1 for val in chunk]
                 win = False not in win

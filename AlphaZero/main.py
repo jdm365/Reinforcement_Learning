@@ -7,16 +7,18 @@ if __name__ == '__main__':
     n_epochs = 1000
     test = False
 
-    for epoch in tqdm(range(n_epochs)):
-        agent.play_game(test)
-        if len(agent.memory.states) > agent.batch_size:
-            agent.learn()
+    def train(n_epochs):
+        for epoch in tqdm(range(n_epochs)):
+            agent.play_game(test)
+            if len(agent.memory.states) > agent.batch_size:
+                agent.learn()
 
-        if epoch % (n_epochs / 5) == 0:
-            agent.save_model()
-        if epoch >= .95 * n_epochs:
-            test = True
-        
+            if epoch % (n_epochs / 5) == 0:
+                agent.save_model()
+            if epoch >= .95 * n_epochs:
+                test = True
 
+    def test():
+        agent.play_agent()
 
-
+    test()

@@ -75,3 +75,32 @@ class Agent:
         print('...Loading Models...')
         self.actor_critic.load_models()
 
+
+    def play_agent(self):
+        self.load_model()
+        temperature = 0
+
+        initial_state = self.game.init_state
+        print(initial_state)
+        action = int(input('Enter move (0-6): '))
+        ## New root node
+        node = Node(prior=0.1428, prev_state=initial_state, prev_action=action, game=self.game)
+        value = self.game.get_reward(node.state)
+
+        while value is None:
+            node = self.tree_search.run(node)
+            action, probs = node.choose_action(temperature)
+            ## New root node
+            node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
+            value = self.game.get_reward(node.state)
+            if value is not None:
+                winner = 'You lost loser hahahahaha'
+                break
+            print(node.state)
+            action = int(input('Enter move (0-6): '))
+            ## New root node
+            node = Node(prior=0.1428, prev_state=node.state, prev_action=action, game=self.game)
+            value = self.game.get_reward(node.state)
+            winner = 'You won, darn'
+        print(node.state)
+        print(winner)
