@@ -1,4 +1,5 @@
 import numpy as np
+import pygame
 
 ## 1d connect N game
 class ConnectN:
@@ -131,6 +132,59 @@ class Connect4:
         elif result == False:
             return None
 
+    def draw_board(self, board, winner=None):
+        board = np.flip(board, 0) 
+        blue = (0,0,255)
+        black = (0,0,0)
+        red = (255,0,0)
+        yellow = (255,255,0)
+
+        pygame.init()
+        SQUARESIZE = 100
+        RADIUS = int(SQUARESIZE / 2 - 5)
+
+        width = self.columns * SQUARESIZE
+        height = (self.rows+1) * SQUARESIZE
+        size = (width, height)
+        screen = pygame.display.set_mode(size)
+
+        for col in range(self.columns):
+            for row in range(self.rows):
+                pygame.draw.rect(screen, blue, 
+                    (col * SQUARESIZE,
+                    row * SQUARESIZE + SQUARESIZE, 
+                    SQUARESIZE, 
+                    SQUARESIZE)
+                    )
+                pygame.draw.circle(screen, 
+                    black, 
+                    (int(col * SQUARESIZE + SQUARESIZE / 2), 
+                    int(row * SQUARESIZE + SQUARESIZE + SQUARESIZE / 2)), 
+                    RADIUS
+                    )
+        
+        for col in range(self.columns):
+            for row in range(self.rows): 
+                if board[row][col] == 1:
+                    pygame.draw.circle(screen, 
+                        red, 
+                        (int(col * SQUARESIZE + SQUARESIZE / 2), 
+                        height - int(row * SQUARESIZE + SQUARESIZE / 2)), 
+                        RADIUS
+                    )
+                elif board[row][col] == -1:
+                    pygame.draw.circle(screen, yellow, 
+                        (int(col * SQUARESIZE + SQUARESIZE / 2), 
+                        height - int(row * SQUARESIZE + SQUARESIZE / 2)), 
+                        RADIUS
+                    )
+        if winner is not None:
+            myfont = pygame.font.SysFont("monospace", 75)
+            label = myfont.render(winner, 1, blue)
+            screen.blit(label, (40,10))
+            pygame.display.update()
+            pygame.time.wait(3000)
+        pygame.display.update()
 
         
 

@@ -4,6 +4,7 @@ from replay_buffer import ReplayBuffer
 from networks import ActorCriticNetwork
 from games import ConnectN, Connect4
 from monte_carlo_tree_search import MCTS, Node
+import pygame
 
 
 class Agent:
@@ -77,29 +78,46 @@ class Agent:
 
     def play_agent(self):
         self.load_model()
-        temperature = 0
+        game_over = False
+        clicked = False
+        while not game_over:
+            temperature = 0
 
-        initial_state = self.game.init_state
-        print(f'{initial_state}')
-        action = int(input('Enter move (0-6): '))
-        ## New root node
-        node = Node(prior=0.1428, prev_state=initial_state, prev_action=action, game=self.game)
-        value = self.game.get_reward(node.state)
+            initial_state = self.game.init_state
+            self.game.draw_board(initial_state)
+            #action = int(input('Enter move (0-6): '))
+            while not clicked:
+                for event in pygame.event.get():
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        posx = event.pos[0]
+                        clicked = True
+            clicked = False
+            action = posx // 100
+            ## New root node
+            node = Node(prior=0.1428, prev_state=initial_state, prev_action=action, game=self.game)
+            value = self.game.get_reward(node.state)
 
-        while value is None:
-            node = self.tree_search.run(node)
-            action, probs = node.choose_action(temperature)
-            ## New root node
-            node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
-            value = self.game.get_reward(node.state)
-            if value is not None:
-                winner = 'You lost loser hahahahaha'
-                break
-            print(f'{node.state}')
-            action = int(input('Enter move (0-6):'))
-            ## New root node
-            node = Node(prior=0.1428, prev_state=node.state, prev_action=action, game=self.game)
-            value = self.game.get_reward(node.state)
-            winner = 'You won, darn'
-        print(node.state)
-        print(winner)
+            while value is None:
+                node = self.tree_search.run(node)
+                action, probs = node.choose_action(temperature)
+                ## New root node
+                node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
+                value = self.game.get_reward(node.state)
+                if value is not None:
+                    winner = 'You lost loser hahahahaha'
+                    break
+                self.game.draw_board(node.state)
+                #action = int(input('Enter move (0-6):'))
+                while not clicked:
+                    for event in pygame.event.get():
+                        if event.type == pygame.MOUSEBUTTONDOWN:
+                            posx = event.pos[0]
+                            clicked = True
+                clicked = False
+                action = posx // 100
+                ## New root node
+                node = Node(prior=0.1428, prev_state=node.state, prev_action=action, game=self.game)
+                value = self.game.get_reward(node.state)
+                winner = 'You won, darn'
+            game_over = True
+            self.game.draw_board(node.state, winner=winner)
