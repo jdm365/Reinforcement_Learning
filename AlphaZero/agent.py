@@ -4,7 +4,6 @@ from replay_buffer import ReplayBuffer
 from networks import ActorCriticNetwork
 from games import ConnectN, Connect4
 from monte_carlo_tree_search import MCTS, Node
-import sys
 
 
 class Agent:
@@ -81,7 +80,7 @@ class Agent:
         temperature = 0
 
         initial_state = self.game.init_state
-        print(initial_state)
+        print(f'{initial_state}')
         action = int(input('Enter move (0-6): '))
         ## New root node
         node = Node(prior=0.1428, prev_state=initial_state, prev_action=action, game=self.game)
@@ -96,8 +95,8 @@ class Agent:
             if value is not None:
                 winner = 'You lost loser hahahahaha'
                 break
-            print(node.state)
-            action = int(input('Enter move (0-6): '))
+            print(f'{node.state}')
+            action = int(input('Enter move (0-6):'))
             ## New root node
             node = Node(prior=0.1428, prev_state=node.state, prev_action=action, game=self.game)
             value = self.game.get_reward(node.state)
