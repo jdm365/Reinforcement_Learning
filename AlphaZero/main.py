@@ -19,5 +19,5 @@ if __name__ == '__main__':
     def test(cpu=False):
         agent.play_agent(cpu)
 
-    #train(n_epochs=n_epochs)
+    ##train(n_epochs=n_epochs)
     test(True)
