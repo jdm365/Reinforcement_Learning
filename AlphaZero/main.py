@@ -16,8 +16,8 @@ if __name__ == '__main__':
                 agent.save_model()
         agent.save_model()
 
-    def test():
-        agent.play_agent()
+    def test(cpu=False):
+        agent.play_agent(cpu)
 
     #train(n_epochs=n_epochs)
-    test()
+    test(True)

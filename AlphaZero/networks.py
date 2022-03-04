@@ -54,5 +54,8 @@ class ActorCriticNetwork(nn.Module):
     def save_models(self):
         T.save(self.state_dict(), self.filename)
 
-    def load_models(self):
+    def load_models(self, cpu=False):
+        if cpu:
+            self.load_state_dict(T.load(self.filename, map_location=T.device('cpu')))
+            return
         self.load_state_dict(T.load(self.filename))

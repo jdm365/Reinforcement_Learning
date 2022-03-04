@@ -69,13 +69,13 @@ class Agent:
         print('...Saving Models...')
         self.actor_critic.save_models()
 
-    def load_model(self):
+    def load_model(self, cpu=False):
         print('...Loading Models...')
-        self.actor_critic.load_models()
+        self.actor_critic.load_models(cpu)
 
 
-    def play_agent(self):
-        self.load_model()
+    def play_agent(self, cpu=False):
+        self.load_model(cpu)
         game_over = False
         clicked = False
         while not game_over:
