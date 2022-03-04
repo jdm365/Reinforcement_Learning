@@ -22,9 +22,9 @@ class Agent:
             rewards.append(value * factor)
         return list(reversed(rewards))
 
-    def play_game(self, test=False):
+    def play_game(self):
         ## Always start from root node.
-        temperature = 1.0 * (1-int(test))
+        temperature = 1.0
         node = self.tree_search.run()
         action, probs = node.choose_action(temperature)
         self.memory.remember(np.copy(node.state), probs)
@@ -43,12 +43,6 @@ class Agent:
         self.memory.remember(np.copy(node.state), probs)
         self.memory.episode_rewards = self.backup(self.memory.episode_states, value)
 
-        winner = 'Player 1' if self.memory.episode_rewards[0] == 1 else 'Player 2'
-        if self.memory.episode_rewards[0] == 0:
-            winner = 'Nobody -> Draw'
-
-        if test:
-            print(self.memory.episode_states, '\nWinner is', winner, '\n')
         self.memory.store_episode()
 
     def learn(self):

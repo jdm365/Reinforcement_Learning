@@ -4,21 +4,18 @@ from agent import Agent
 
 if __name__ == '__main__':
     agent = Agent(lr=1e-2, batch_size=64, n_simulations=500)
-    n_epochs = 2500
-    test = False
+    n_epochs = 1750
 
     def train(n_epochs):
         for epoch in tqdm(range(n_epochs)):
-            agent.play_game(test)
+            agent.play_game()
             if len(agent.memory.states) > agent.batch_size:
                 agent.learn()
 
             if epoch % (n_epochs / 5) == 0:
                 agent.save_model()
-            if epoch >= .95 * n_epochs:
-                test = True
 
     def test():
         agent.play_agent()
 
-    test()
+    train(n_epochs=n_epochs)
