@@ -14,6 +14,7 @@ if __name__ == '__main__':
 
             if epoch % (n_epochs / 5) == 0:
                 agent.save_model()
+        agent.save_model()
 
     def test():
         agent.play_agent()
