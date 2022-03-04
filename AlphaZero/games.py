@@ -179,7 +179,7 @@ class Connect4:
                         RADIUS
                     )
         if winner is not None:
-            myfont = pygame.font.SysFont("monospace", 75)
+            myfont = pygame.font.SysFont("monospace", 40)
             label = myfont.render(winner, 1, blue)
             screen.blit(label, (40,10))
             pygame.display.update()

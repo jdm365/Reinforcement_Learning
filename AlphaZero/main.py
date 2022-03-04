@@ -3,8 +3,8 @@ from agent import Agent
 
 
 if __name__ == '__main__':
-    agent = Agent(lr=1e-2, batch_size=64, n_simulations=250)
-    n_epochs = 1000
+    agent = Agent(lr=1e-2, batch_size=64, n_simulations=500)
+    n_epochs = 2500
     test = False
 
     def train(n_epochs):

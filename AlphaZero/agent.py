@@ -85,7 +85,6 @@ class Agent:
 
             initial_state = self.game.init_state
             self.game.draw_board(initial_state)
-            #action = int(input('Enter move (0-6): '))
             while not clicked:
                 for event in pygame.event.get():
                     if event.type == pygame.MOUSEBUTTONDOWN:
@@ -104,10 +103,9 @@ class Agent:
                 node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
                 value = self.game.get_reward(node.state)
                 if value is not None:
-                    winner = 'You lost loser hahahahaha'
+                    winner = 'You lost loser MWAHAHAHAH!'
                     break
                 self.game.draw_board(node.state)
-                #action = int(input('Enter move (0-6):'))
                 while not clicked:
                     for event in pygame.event.get():
                         if event.type == pygame.MOUSEBUTTONDOWN:
