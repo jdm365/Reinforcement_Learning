@@ -20,7 +20,7 @@ class ActorCriticNetwork(nn.Module):
         self.actor_head = self.network.actor_head
         self.critic_head = self.network.critic_head
 
-        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr, weight_decay=1e-5)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 

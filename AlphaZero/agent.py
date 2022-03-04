@@ -31,6 +31,7 @@ class Agent:
         ## New root node
         node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
         value = self.game.get_reward(node.state)
+        game_idx = 1
 
         while value is None:
             node = self.tree_search.run(node)
@@ -39,6 +40,9 @@ class Agent:
             ## New root node
             node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
             value = self.game.get_reward(node.state)
+            game_idx += 1
+            if game_idx == 15:
+                temperature = 0.01
         
         self.memory.remember(np.copy(node.state), probs)
         self.memory.episode_rewards = self.backup(self.memory.episode_states, value)

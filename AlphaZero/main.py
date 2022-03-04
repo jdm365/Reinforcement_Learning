@@ -3,7 +3,7 @@ from agent import Agent
 
 
 if __name__ == '__main__':
-    agent = Agent(lr=1e-2, batch_size=64, n_simulations=500)
+    agent = Agent(lr=1e-2, batch_size=256, n_simulations=500)
     n_epochs = 1750
 
     def train(n_epochs):
@@ -19,4 +19,5 @@ if __name__ == '__main__':
     def test():
         agent.play_agent()
 
-    train(n_epochs=n_epochs)
+    #train(n_epochs=n_epochs)
+    test()
