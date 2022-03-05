@@ -1,5 +1,3 @@
-from turtle import forward
-from more_itertools import first
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
@@ -179,10 +177,10 @@ class TransformerEncoder(nn.Module):
         self.feed_forward = nn.Sequential(
             nn.Linear(encoding_dims, fc1_dims),
             nn.LayerNorm(fc1_dims),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Linear(fc1_dims, fc2_dims),
             nn.LayerNorm(fc2_dims),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Linear(fc2_dims, encoding_dims)
         )
 
@@ -239,6 +237,3 @@ class Connect4NetworkTransformer(nn.Module):
         probs = self.actor_head.forward(out)
         value = self.critic_head.forward(out)
         return probs, value
-
-
-    
