@@ -1,4 +1,5 @@
 from turtle import forward
+from more_itertools import first
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
@@ -85,14 +86,12 @@ class Connect4NetworkConvolutional(nn.Module):
         return F.relu(block_output + residual_connection)
 
 
-
 ## Baseline vison-esque transformer network
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, encoding_dims=768, first_block=False):
+    def __init__(self, input_dims, encoding_dims=768, first_block=False):
         super(PositionalEncoding, self).__init__()
         self.first_block = first_block
-        input_dims = (7, 6)
         input_dims = input_dims[-2] * input_dims[-1]
         if first_block:
             self.cls_token = nn.Parameter(T.zeros(1, 1, encoding_dims))
@@ -120,10 +119,10 @@ class PositionalEncoding(nn.Module):
         return encoded_vectors
 
 class Attention(nn.Module):
-    def __init__(self, encoding_dims, first_block=False):
+    def __init__(self, input_dims, encoding_dims, first_block=False):
         super(Attention, self).__init__()
         self.norm_factor = np.sqrt(encoding_dims)
-        self.encoder = PositionalEncoding(encoding_dims, first_block)
+        self.encoder = PositionalEncoding(input_dims, encoding_dims, first_block)
 
         self.queries = nn.Linear(encoding_dims, encoding_dims, bias=False)
         self.keys = nn.Linear(encoding_dims, encoding_dims, bias=False)
@@ -147,9 +146,9 @@ class Attention(nn.Module):
 
 
 class MultiHeadedAttention(nn.Module):
-    def __init__(self, encoding_dims, n_heads, first_block=False):
+    def __init__(self, input_dims, encoding_dims, n_heads, first_block=False):
         super(MultiHeadedAttention, self).__init__()
-        self.attention_heads = [Attention(encoding_dims, first_block=False) \
+        self.attention_heads = [Attention(input_dims, encoding_dims, first_block=first_block) \
             for _ in range(n_heads)]
 
         self.fc = nn.Linear(encoding_dims, encoding_dims, bias=False)
@@ -158,19 +157,20 @@ class MultiHeadedAttention(nn.Module):
         attention_values = []
         for head in self.attention_heads:
             value, skip_val = head.forward(inputs)
-            attention_values.append(value.reshape(1, *value.shape))
+            attention_values.append(value)
         mha_output = T.stack(attention_values).mean(dim=0)
-        ## mha_out dims (N, 1+ (input_dims[-2] * input_dims[-1]), encoding_dims)
+        ## mha_out dims (N, 1 + (input_dims[-2] * input_dims[-1]), encoding_dims)
         skip_value = skip_val
         mha_output = self.fc(mha_output)
         return mha_output, skip_value
 
 
 class TransformerEncoder(nn.Module):
-    def __init__(self, encoding_dims, n_heads, \
+    def __init__(self, input_dims, encoding_dims, n_heads, \
         fc1_dims, fc2_dims, first_block=False):
         super(TransformerEncoder, self).__init__()
         self.multi_headed_attention = MultiHeadedAttention(
+            input_dims,
             encoding_dims,
             n_heads,
             first_block
@@ -199,13 +199,13 @@ class TransformerEncoder(nn.Module):
         return output
 
 class TransformerNetwork(nn.Module):
-    def __init__(self, lr, encoding_dims, n_heads, \
+    def __init__(self, input_dims, encoding_dims, n_heads, \
         fc1_dims, fc2_dims, n_encoder_blocks):
         super(TransformerNetwork, self).__init__()
         self.encoder_blocks = nn.ModuleList(
-            [TransformerEncoder(encoding_dims, n_heads, fc1_dims, \
+            [TransformerEncoder(input_dims, encoding_dims, n_heads, fc1_dims, \
                 fc2_dims, first_block=True)] + \
-            [TransformerEncoder(encoding_dims, n_heads, fc1_dims, \
+            [TransformerEncoder(input_dims, encoding_dims, n_heads, fc1_dims, \
                 fc2_dims) for _ in range(n_encoder_blocks-1)]
         )
         self.network = nn.Sequential(
@@ -215,10 +215,10 @@ class TransformerNetwork(nn.Module):
 
 
 class Connect4NetworkTransformer(nn.Module):
-    def __init__(self, n_actions=7, encoding_dims=768, n_heads=8, \
+    def __init__(self, input_dims, n_actions, encoding_dims=768, n_heads=8, \
         fc1_dims=128, fc2_dims=256, n_encoder_blocks=4):
         super(Connect4NetworkTransformer, self).__init__()
-        transformer = TransformerNetwork(encoding_dims, n_heads, fc1_dims, \
+        transformer = TransformerNetwork(input_dims, encoding_dims, n_heads, fc1_dims, \
             fc2_dims, n_encoder_blocks)
         self.network = transformer.network
 

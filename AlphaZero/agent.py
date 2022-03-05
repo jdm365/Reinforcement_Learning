@@ -8,8 +8,8 @@ import pygame
 
 
 class Agent:
-    def __init__(self, lr, batch_size, n_simulations, game=Connect4()):
-        self.actor_critic = ActorCriticNetwork(lr, game.init_state.shape, game.columns)
+    def __init__(self, lr, batch_size, n_simulations, game=Connect4(), convolutional=True):
+        self.actor_critic = ActorCriticNetwork(lr, game.init_state.shape, game.columns, convolutional)
         self.tree_search = MCTS(self.actor_critic, n_simulations, game)
         self.memory = ReplayBuffer(batch_size)
         self.batch_size = batch_size
