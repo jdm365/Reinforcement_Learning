@@ -12,9 +12,9 @@ if __name__ == '__main__':
             if len(agent.memory.states) > agent.batch_size:
                 agent.learn()
 
-            if epoch % (n_epochs / 5) == 0:
-                agent.save_model()
-        agent.save_model()
+            #if epoch % (n_epochs / 5) == 0:
+            #    agent.save_model()
+        #agent.save_model()
 
     def test(cpu=False):
         agent.play_agent(cpu)

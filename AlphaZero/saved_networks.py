@@ -111,58 +111,56 @@ class PositionalEncoding(nn.Module):
         ## input_dims (N, in_channels, height, width)
         encodings = self.encodings(inputs)
         encoded_vectors = T.transpose(encodings.flatten(start_dim=2), 1, 2)
-        ## encoded dims (N, input_dims[-2] * input_dims[-1], encoding_dims)
+        ## encoded dims (N, n_patches, encoding_dims)
         cls_token = self.cls_token.expand(inputs.shape[0], -1, -1)
         encoded_vectors = T.cat((cls_token, encoded_vectors), dim=1)
         encoded_vectors += self.pos_embed
-        ## encoded dims (N, 1 + (input_dims[-2] * input_dims[-1]), encoding_dims)
+        ## encoded dims (N, n_patches, encoding_dims)
         return encoded_vectors
 
-class Attention(nn.Module):
-    def __init__(self, input_dims, encoding_dims, first_block=False):
-        super(Attention, self).__init__()
-        self.norm_factor = np.sqrt(encoding_dims)
+class MultiHeadedAttention(nn.Module):
+    def __init__(self, input_dims, encoding_dims, n_heads, first_block=False):
+        super(MultiHeadedAttention, self).__init__()
+        self.n_heads = n_heads
+        self.head_dims = encoding_dims // n_heads
+        self.norm_factor = np.sqrt(self.head_dims)
         self.encoder = PositionalEncoding(input_dims, encoding_dims, first_block)
 
         self.queries = nn.Linear(encoding_dims, encoding_dims, bias=False)
         self.keys = nn.Linear(encoding_dims, encoding_dims, bias=False)
         self.values = nn.Linear(encoding_dims, encoding_dims, bias=False)
 
-    def forward(self, inputs):
-        encoded_vectors = self.encoder.forward(inputs)
-
-        ## encoded dims (N, 1 + (input_dims[-2] * input_dims[-1]), encoding_dims)
-        queries = self.queries(encoded_vectors)
-        keys = self.keys(encoded_vectors)
-        values = self.values(encoded_vectors)
-        ## qkv dims (N, 1 + (input_dims[-2] * input_dims[-1]), encoding_dims)
-
-        out = T.einsum('tuv, tvw -> tuw', queries, keys.transpose(-2, -1)) / self.norm_factor
-        out = F.softmax(out, dim=-1)
-        ## out dims (N, 1+ (input_dims[-2] * input_dims[-1]), 1 + (input_dims[-2] * input_dims[-1]))
-        attention_values = T.einsum('tuu, tuv -> tuv', out, values)
-        ## att val dims == encoded dims
-        return attention_values, encoded_vectors
-
-
-class MultiHeadedAttention(nn.Module):
-    def __init__(self, input_dims, encoding_dims, n_heads, first_block=False):
-        super(MultiHeadedAttention, self).__init__()
-        self.attention_heads = [Attention(input_dims, encoding_dims, first_block=first_block) \
-            for _ in range(n_heads)]
-
         self.fc = nn.Linear(encoding_dims, encoding_dims, bias=False)
 
     def forward(self, inputs):
-        attention_values = []
-        for head in self.attention_heads:
-            value, skip_val = head.forward(inputs)
-            attention_values.append(value)
-        mha_output = T.stack(attention_values).mean(dim=0)
-        ## mha_out dims (N, 1 + (input_dims[-2] * input_dims[-1]), encoding_dims)
-        skip_value = skip_val
-        mha_output = self.fc(mha_output)
-        return mha_output, skip_value
+        encoded_vectors = self.encoder.forward(inputs)
+        ## encoded dims (N, n_patches, encoding_dims)
+
+        batch_size, n_patches, _ = encoded_vectors.shape
+
+        queries = self.queries(encoded_vectors)
+        keys = self.keys(encoded_vectors)
+        values = self.values(encoded_vectors)
+        ## qkv dims (N, n_patches, encoding_dims)
+
+        queries = queries.reshape(batch_size, n_patches, self.n_heads, self.head_dims)
+        keys = keys.reshape(batch_size, n_patches, self.n_heads, self.head_dims)
+        values = values.reshape(batch_size, n_patches, self.n_heads, self.head_dims)
+        ## qkv dims (N, n_patches, n_heads, head_dims)
+
+        queries = queries.permute(0, 2, 1, 3).contiguous()
+        keys = keys.permute(0, 2, 1, 3).contiguous()
+        values = values.permute(0, 2, 1, 3).contiguous()
+        ## qkv dims (N, n_heads, n_patches, head_dims)
+
+        out = T.einsum('stuv, stvw -> stuw', queries, keys.transpose(-2, -1)) / self.norm_factor
+        out = F.softmax(out, dim=-1)
+        ## out dims (N, n_heads, n_patches, n_patches)
+        attention_values = T.einsum('stuu, stuv -> stuv', out, values).permute(0, 2, 1, 3).contiguous()
+        ## att val dims (N, n_patches, n_heads, head_dims)
+        attention_values = attention_values.flatten(start_dim=2)
+        ## att val dims (N, n_patches, encoding_dims)
+        return attention_values, encoded_vectors
 
 
 class TransformerEncoder(nn.Module):
@@ -195,7 +193,7 @@ class TransformerEncoder(nn.Module):
         add_and_norm = self.norm_1(skip_val + mha_output)
         ff_output = self.feed_forward(add_and_norm)
         output = self.norm_2(add_and_norm + ff_output)
-        ## output dims (N, 1 + (input_dims[-2] * input_dims[-1]), encoding_dim)
+        ## output dims (N, n_patches, encoding_dim)
         return output
 
 class TransformerNetwork(nn.Module):
@@ -216,7 +214,7 @@ class TransformerNetwork(nn.Module):
 
 class Connect4NetworkTransformer(nn.Module):
     def __init__(self, input_dims, n_actions, encoding_dims=768, n_heads=8, \
-        fc1_dims=128, fc2_dims=256, n_encoder_blocks=4):
+        fc1_dims=128, fc2_dims=256, n_encoder_blocks=2):
         super(Connect4NetworkTransformer, self).__init__()
         transformer = TransformerNetwork(input_dims, encoding_dims, n_heads, fc1_dims, \
             fc2_dims, n_encoder_blocks)
