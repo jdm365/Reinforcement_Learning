@@ -742,6 +742,9 @@ class ChessRules:
                     north_west_range = 1
                     break
 
+
+            if square == 'n'
+
             
 
 
