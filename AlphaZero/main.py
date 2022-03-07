@@ -3,7 +3,7 @@ from agent import Agent
 
 
 if __name__ == '__main__':
-    agent = Agent(lr=1e-2, batch_size=256, n_simulations=250, convolutional=False)
+    agent = Agent(lr=1e-2, batch_size=256, n_simulations=500, convolutional=False)
     n_epochs = 1750
 
     def train(n_epochs):
@@ -19,5 +19,5 @@ if __name__ == '__main__':
     def test(cpu=False):
         agent.play_agent(cpu)
 
-    ##train(n_epochs=n_epochs)
-    train(n_epochs)
+    train(n_epochs=n_epochs)
+    ##test(cpu=True)
