@@ -995,6 +995,10 @@ class ChessRules:
                 possible_moves_array[arr_coords[0], arr_coords[1], 63] = north_west_move
 
 
+        if square == 'p':
+            
+
+
             
 
 
