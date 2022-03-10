@@ -2,13 +2,14 @@ import numpy as np
 import torch as T
 
 class ReplayBuffer:
-    def __init__(self, batch_size, max_mem_length=25000):
+    def __init__(self, batch_size, max_mem_length=750, unroll_length=5):
         self.batch_size = batch_size
+        self.unroll_length = unroll_length
 
         self.games = []
         self.episode_states = []
         self.episode_actions = []
-        self.episode_rewards = []
+        self.episode_values = []
         
         self.max_length = max_mem_length
  
@@ -17,27 +18,27 @@ class ReplayBuffer:
         self.episode_action_probs.append(action_probs)
 
     def get_batch(self):
-        index = np.random.randint(0, len(self.states), self.batch_size)
+        index = np.random.randint(0, len(self.games), self.batch_size)
+        games = self.games[index]
 
-        states = np.array(self.states, dtype=float)[index]
-        probs = np.array(self.action_probs, dtype=float)[index]
-        rewards = np.array(self.rewards, dtype=float)[index]
+        states = []
+        probs = []
+        values = []
 
-        states = T.FloatTensor(states)
-        probs = T.FloatTensor(probs)
-        rewards = T.FloatTensor(rewards)
+        for game in games:
+            idx = np.random.randint(0, len(game)-self.unroll_length, 1)
+            game_states, game_probs, game_values = game
+            states.append([game_states[idx]])
+            probs.append([game_probs[idx:idx+self.unroll_length]])
+            values.append([game_values[idx:idx:self.unroll_length]])
 
-        return states, probs, rewards
+        return states, probs, values
 
     def store_episode(self):
-        self.states += self.episode_states
-        self.action_probs += self.episode_action_probs
-        self.rewards += self.episode_rewards
-
-        self.states = self.states[-self.max_length:]
-        self.action_probs = self.action_probs[-self.max_length:]
-        self.rewards = self.rewards[-self.max_length:]
+        if len(self.games) > self.max_length:
+            self.games.pop(0)
+        self.games += (self.episode_states, self.episode_action_probs, self.episode_values)
 
         self.episode_states = []
         self.episode_action_probs = []
-        self.episode_rewards = []
+        self.episode_values = []

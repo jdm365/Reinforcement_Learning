@@ -31,14 +31,21 @@ class Agent:
             hidden_state = self.representation.forward(self.game.state)
             self.tree_search.expand_node(root, 1, self.game.get_valid_moves(), hidden_state)
             node = self.tree_search.search(root)
-            action = node.choose_action(temperature=1.0)
-            ### self.memory.remember(self.game.state, hidden_state, action_probs, root.values(), root.reward) ###
+            action, probs = self.tree_search.choose_action(1.0, self.game.columns)
+            self.memory.remember(self.game.state, probs)
             self.game.iter_state(action)
+        self.backup(self.memory.episode_values, self.game.get_reward())
+        self.memory.store_episode()
 
     def learn(self):
         states, target_probs, target_vals = self.memory.get_batch()
-        target_probs = target_probs.to(self.actor_critic.device)
-        target_vals = target_vals.to(self.actor_critic.device)
+        
+
+
+
+
+
+        
         self.actor_critic.eval()
         probs, vals = self.actor_critic.forward(states)
         self.actor_critic.train()

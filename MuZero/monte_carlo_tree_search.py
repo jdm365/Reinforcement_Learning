@@ -1,4 +1,5 @@
 import numpy as np
+from sympy import Idx
 
 class Node:
     def __init__(self, prior):
@@ -72,7 +73,7 @@ class MCTS:
         best_child = list(self.children.values())[idx]
         return best_action, best_child
 
-    def choose_action(self, temperature):
+    def choose_action(self, temperature, action_space_size):
         visit_counts = np.array([child.visit_count for child in self.children.values()])
         actions = [action for action in self.children.keys()]
         eta = 5e-2
@@ -80,7 +81,17 @@ class MCTS:
         visit_count_dist = visit_counts ** (1 / (temperature + eta))
         visit_count_dist /= sum(visit_count_dist)
         action = np.random.choice(actions, p=visit_count_dist)
+
+        probs = np.zeros(action_space_size)
+        for idx, act in enumerate(actions):
+            probs[act] = visit_count_dist[idx]
         return action
+
+    def backprop(self, search_path, value):
+        for idx, node in enumerate(reversed(search_path)):
+            node.value_sum += value * pow(-1, idx+1)
+            node.visit_count += 1
+            value = node.reward + self.dicount * value
 
     def search(self, root):
         for _ in range(self.n_simulations):
@@ -107,9 +118,3 @@ class MCTS:
             ## BACKPROPOGATE
             self.backprop(search_path, value)
         return root
-
-    def backprop(self, search_path, value):
-        for idx, node in enumerate(reversed(search_path)):
-            node.value_sum += value * pow(-1, idx+1)
-            node.visit_count += 1
-            value = node.reward + self.dicount * value
