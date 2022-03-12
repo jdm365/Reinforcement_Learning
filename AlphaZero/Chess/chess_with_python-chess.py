@@ -17,11 +17,13 @@ class Chess:
         self.init_state = chess.Board().reset()
 
     def get_valid_moves(self, board):
-        valid_moves_array = np.zeros((8, 8, 73), dtype=int)
+        valid_moves_array = np.zeros((8, 8, 82), dtype=int)
 
         legal_moves = list(board.legal_moves)
-
         for move in legal_moves:
+            valid_moves_array = encode_move(str(move), valid_moves_array)
+        
+        return valid_moves_array
             
 
 
