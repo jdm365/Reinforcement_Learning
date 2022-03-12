@@ -22,8 +22,10 @@ class Chess:
         legal_moves = list(board.legal_moves)
         for move in legal_moves:
             valid_moves_array = encode_move(str(move), valid_moves_array)
-        
         return valid_moves_array
+
+    def get_next_state(self, board, action):
+        return
             
 
 

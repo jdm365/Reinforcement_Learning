@@ -179,3 +179,13 @@ def encode_move(move, moves_array):
 
 
 
+
+
+
+
+
+
+## Add decode move functionality
+
+
+
