@@ -98,11 +98,12 @@ class PositionalEncoding(nn.Module):
             stride=(2, 3),
             padding=(0, 1)
             )
-        patch_dims = (input_dims[-2] - 2 - 1) * (input_dims[-1] - 3 - 1) + 1
+        patch_dims = (input_dims[-2] - 2 - 1) * (input_dims[-1] - 3 - 1)
         if first_block:
             self.cls_token = nn.Parameter(T.zeros(1, 1, encoding_dims))
             self.pos_embed = nn.Parameter(T.zeros(1, 1 + patch_dims, \
                 encoding_dims))
+        self.dropout = nn.Dropout(p=.2)
 
     def forward(self, inputs):
         if not self.first_block:
@@ -115,6 +116,7 @@ class PositionalEncoding(nn.Module):
         encoded_vectors = T.cat((cls_token, encoded_vectors), dim=1)
         encoded_vectors += self.pos_embed
         ## encoded dims (N, n_patches, encoding_dims)
+        encoded_vectors = self.dropout(encoded_vectors)
         return encoded_vectors
 
 class MultiHeadedAttention(nn.Module):
@@ -128,6 +130,8 @@ class MultiHeadedAttention(nn.Module):
         self.queries = nn.Linear(encoding_dims, encoding_dims, bias=False)
         self.keys = nn.Linear(encoding_dims, encoding_dims, bias=False)
         self.values = nn.Linear(encoding_dims, encoding_dims, bias=False)
+
+        self.dropout = nn.Dropout(p=.2)
 
         self.fc = nn.Linear(encoding_dims, encoding_dims, bias=False)
 
@@ -159,6 +163,7 @@ class MultiHeadedAttention(nn.Module):
         ## att val dims (N, n_patches, n_heads, head_dims)
         attention_values = attention_values.flatten(start_dim=2)
         ## att val dims (N, n_patches, encoding_dims)
+        attention_values = self.dropout(self.fc(attention_values))
         return attention_values, encoded_vectors
 
 
@@ -178,8 +183,10 @@ class TransformerEncoder(nn.Module):
         self.feed_forward = nn.Sequential(
             nn.Linear(encoding_dims, encoding_dims*4),
             nn.LayerNorm(encoding_dims*4),
+            nn.Dropout(p=.2),
             nn.GELU(),
-            nn.Linear(encoding_dims*4, encoding_dims)
+            nn.Linear(encoding_dims*4, encoding_dims),
+            nn.Dropout(p=.2)
         )
 
         self.norm_2 = nn.LayerNorm(encoding_dims)
@@ -210,7 +217,7 @@ class TransformerNetwork(nn.Module):
 
 class Connect4NetworkTransformer(nn.Module):
     def __init__(self, input_dims, n_actions, encoding_dims=768, n_heads=12, \
-        n_encoder_blocks=2):
+        n_encoder_blocks=4):
         super(Connect4NetworkTransformer, self).__init__()
         transformer = TransformerNetwork(input_dims, encoding_dims, n_heads, \
             n_encoder_blocks)
