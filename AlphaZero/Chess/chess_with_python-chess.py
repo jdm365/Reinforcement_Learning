@@ -26,6 +26,12 @@ class Chess:
 
     def get_next_state(self, board, action):
         return
+
+    def check_terminal(self, board):
+        return
+
+    def get_reward(self, board):
+        return
             
 
 
