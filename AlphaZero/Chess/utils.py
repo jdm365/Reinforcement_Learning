@@ -187,7 +187,6 @@ def translate_queen_move(move):
     start_square = chr(start_file + 97) + str(start_rank + 1)
     direction = move[2] // 7
     distance = move[2] % 7 + 1
-    print(distance)
 
     if direction == 0:
         end_rank = start_rank + distance
@@ -351,3 +350,84 @@ def decode_move(move):
         return translate_underpromotion_move(move)
 
 
+
+def encode_board(board):
+    ## Input board is bitboard from python-chess
+    piece_map = board.piece_map()
+
+    pawns_array = np.zeros((8, 8), dtype=int)
+    for idx, val in piece_map.items():
+        val = str(val)
+        if val == 'P':
+            rank = idx // 8
+            file = idx % 8
+            pawns_array[rank, file] = 1
+        if val == 'p':
+            rank = idx // 8
+            file = idx % 8
+            pawns_array[rank, file] = -1
+
+    knights_array = np.zeros((8, 8), dtype=int)
+    for idx, val in piece_map.items():
+        val = str(val)
+        if val == 'N':
+            rank = idx // 8
+            file = idx % 8
+            knights_array[rank, file] = 1
+        if val == 'n':
+            rank = idx // 8
+            file = idx % 8
+            knights_array[rank, file] = -1
+    
+    bishops_array = np.zeros((8, 8), dtype=int)
+    for idx, val in piece_map.items():
+        val = str(val)
+        if val == 'B':
+            rank = idx // 8
+            file = idx % 8
+            bishops_array[rank, file] = 1
+        if val == 'b':
+            rank = idx // 8
+            file = idx % 8
+            bishops_array[rank, file] = -1
+
+    rooks_array = np.zeros((8, 8), dtype=int)
+    for idx, val in piece_map.items():
+        val = str(val)
+        if val == 'R':
+            rank = idx // 8
+            file = idx % 8
+            rooks_array[rank, file] = 1
+        if val == 'r':
+            rank = idx // 8
+            file = idx % 8
+            rooks_array[rank, file] = -1
+
+    queens_array = np.zeros((8, 8), dtype=int)
+    for idx, val in piece_map.items():
+        val = str(val)
+        if val == 'Q':
+            rank = idx // 8
+            file = idx % 8
+            queens_array[rank, file] = 1
+        if val == 'q':
+            rank = idx // 8
+            file = idx % 8
+            queens_array[rank, file] = -1
+
+    kings_array = np.zeros((8, 8), dtype=int)
+    for idx, val in piece_map.items():
+        val = str(val)
+        if val == 'K':
+            rank = idx // 8
+            file = idx % 8
+            kings_array[rank, file] = 1
+        if val == 'k':
+            rank = idx // 8
+            file = idx % 8
+            kings_array[rank, file] = -1
+
+    board_array = np.stack((pawns_array, knights_array, bishops_array, \
+        rooks_array, queens_array, kings_array))
+    ## Shape (6, 8, 8)
+    return board_array

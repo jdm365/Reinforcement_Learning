@@ -19,31 +19,30 @@ class Chess:
     def get_valid_moves(self, board):
         valid_moves_array = np.zeros((8, 8, 82), dtype=int)
 
-        legal_moves = list(board.legal_moves)
+        legal_moves = list(board.copy().legal_moves)
         for move in legal_moves:
             valid_moves_array = encode_move(str(move), valid_moves_array)
         return valid_moves_array
 
     def get_next_state(self, board, action):
+        board = board.copy()
         move = decode_move(action)
         move = chess.Move.from_uci(move)
         board.push(move)
-        print(board, move)
-        return board
+        return encode_board(board)
 
     def check_terminal(self, board):
-        return
+        if board.is_checkmate():
+            return 1
+        if board.is_checkmate():
+            return 0
+        if board.is_insufficient_material():
+            return 0
+        if board.is_threefold_repetition():
+            return 0
+        if board.can_claim_fifty_moves():
+            return 0
+        return False
 
     def get_reward(self, board):
-        return
-            
-
-
-
-
-
-
-board = chess.Board()
-game = Chess()
-
-game.get_next_state(board, (1, 4, 1))
+        return self.check_terminal(board)
