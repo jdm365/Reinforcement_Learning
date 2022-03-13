@@ -25,11 +25,16 @@ class Chess:
         return valid_moves_array
 
     def get_next_state(self, board, action):
+        action_array = np.zeros(8*8*82, dtype=int)
+        action_array[action] = 1
+        action_array = action_array.reshape(8, 8, 82)
+        coords = np.where(action_array == 1)
+        action = tuple((*coords[0], *coords[1], *coords[2]))
         board = board.copy()
         move = decode_move(action)
         move = chess.Move.from_uci(move)
         board.push(move)
-        return encode_board(board)
+        return -encode_board(board)
 
     def check_terminal(self, board):
         if board.is_checkmate():
