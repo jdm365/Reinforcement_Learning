@@ -25,7 +25,11 @@ class Chess:
         return valid_moves_array
 
     def get_next_state(self, board, action):
-        return
+        move = decode_move(action)
+        move = chess.Move.from_uci(move)
+        board.push(move)
+        print(board, move)
+        return board
 
     def check_terminal(self, board):
         return
@@ -42,4 +46,4 @@ class Chess:
 board = chess.Board()
 game = Chess()
 
-game.get_valid_moves(board)
+game.get_next_state(board, (1, 4, 1))

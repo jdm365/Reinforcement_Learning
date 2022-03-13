@@ -178,14 +178,176 @@ def encode_move(move, moves_array):
         return encode_underpromotion_move(move, moves_array)
 
 
+## Queen moves 0-55, knight moves 56-63, underpromotion 64-81
+def translate_queen_move(move):
+    ## move is coordinates (rank, file, action_num)
+    start_rank = move[0]
+    start_file = move[1]
+
+    start_square = chr(start_file + 97) + str(start_rank + 1)
+    direction = move[2] // 7
+    distance = move[2] % 7 + 1
+    print(distance)
+
+    if direction == 0:
+        end_rank = start_rank + distance
+        end_file = start_file
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+    
+    if direction == 1:
+        end_rank = start_rank + distance
+        end_file = start_file + distance
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+
+    if direction == 2:
+        end_rank = start_rank
+        end_file = start_file + distance
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+
+    if direction == 3:
+        end_rank = start_rank - distance
+        end_file = start_file + distance
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+
+    if direction == 4:
+        end_rank = start_rank - distance
+        end_file = start_file
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+
+    if direction == 5:
+        end_rank = start_rank - distance
+        end_file = start_file - distance
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+
+    if direction == 6:
+        end_rank = start_rank
+        end_file = start_file - distance
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+
+    if direction == 7:
+        end_rank = start_rank + distance
+        end_file = start_file - distance
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
 
 
+def translate_knight_move(move):
+    ## move is coordinates (rank, file, action_num)
+    start_rank = move[0]
+    start_file = move[1]
+
+    start_square = chr(start_file + 97) + str(start_rank + 1)
+    direction = move[2] % 7 + 1
+
+    if direction == 0:
+        end_rank = start_rank + 2
+        end_file = start_file + 1
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+    
+    if direction == 1:
+        end_rank = start_rank + 1
+        end_file = start_file + 2
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+
+    if direction == 2:
+        end_rank = start_rank - 1
+        end_file = start_file + 2
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+
+    if direction == 3:
+        end_rank = start_rank - 2
+        end_file = start_file + 1
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+
+    if direction == 4:
+        end_rank = start_rank - 2
+        end_file = start_file - 1
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+
+    if direction == 5:
+        end_rank = start_rank - 1
+        end_file = start_file - 2
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+
+    if direction == 6:
+        end_rank = start_rank + 1
+        end_file = start_file - 2
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+
+    if direction == 7:
+        end_rank = start_rank + 2
+        end_file = start_file - 1
+        end_square = chr(end_file + 97) + str(end_rank + 1)
+        return start_square + end_square
+
+def translate_underpromotion_move(move):
+    ## move is coordinates (rank, file, action_num)
+    start_rank = move[0]
+    start_file = move[1]
+
+    start_square = chr(start_file + 97) + str(start_rank + 1)
+
+    mapping = dict({0: 'N', 1: 'B', 2: 'R'})
+    direction = move[2] // 6
+    promoted_piece = mapping(move[2] % 3)
+
+    if direction == 0:
+        end_rank = start_rank + 1
+        end_file = start_file
+        end_square = chr(end_file + 97) + str(end_rank + 1) + promoted_piece
+        return start_square + end_square
+    
+    if direction == 1:
+        end_rank = start_rank + 1
+        end_file = start_file + 1
+        end_square = chr(end_file + 97) + str(end_rank + 1) + promoted_piece
+        return start_square + end_square
+
+    if direction == 2:
+        end_rank = start_rank - 1
+        end_file = start_file + 1
+        end_square = chr(end_file + 97) + str(end_rank + 1) + promoted_piece.lower()
+        return start_square + end_square
+
+    if direction == 3:
+        end_rank = start_rank - 1
+        end_file = start_file
+        end_square = chr(end_file + 97) + str(end_rank + 1) + promoted_piece.lower()
+        return start_square + end_square
+
+    if direction == 4:
+        end_rank = start_rank - 1
+        end_file = start_file - 1
+        end_square = chr(end_file + 97) + str(end_rank + 1) + promoted_piece.lower()
+        return start_square + end_square
+
+    if direction == 5:
+        end_rank = start_rank + 1
+        end_file = start_file - 1
+        end_square = chr(end_file + 97) + str(end_rank + 1) + promoted_piece
+        return start_square + end_square
 
 
-
-
-
-## Add decode move functionality
-
+def decode_move(move):
+    if move[2] < 56:
+        return translate_queen_move(move)
+    elif move[2] < 64:
+        return translate_knight_move(move)
+    else:
+        return translate_underpromotion_move(move)
 
 
