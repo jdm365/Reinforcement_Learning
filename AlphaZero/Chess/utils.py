@@ -431,3 +431,7 @@ def encode_board(board):
         rooks_array, queens_array, kings_array))
     ## Shape (6, 8, 8)
     return board_array
+
+
+def decode_board(input_state):
+    ## input_state shape (6, 8, 8)
