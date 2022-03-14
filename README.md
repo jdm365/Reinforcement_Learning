@@ -1,2 +1,2 @@
 # Reinforcement_Learning
-Reinforcement Learning programs and algorithms
+Reinforcement Learning programs and algorithms :thumbsup:
