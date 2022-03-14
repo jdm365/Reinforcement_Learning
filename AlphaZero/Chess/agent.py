@@ -43,6 +43,8 @@ class Agent:
             game_idx += 1
             if game_idx == 80:
                 temperature = 0.01
+            if game_idx % 2:
+                print(f'Move number: {game_idx//2}')
         
         self.memory.remember(np.copy(node.state), probs)
         self.memory.episode_rewards = self.backup(self.memory.episode_states, value)
@@ -50,20 +52,26 @@ class Agent:
         self.memory.store_episode()
 
     def learn(self):
+        scaler = T.cuda.amp.GradScaler()
+
         states, target_probs, target_vals = self.memory.get_batch()
         target_probs = target_probs.to(self.actor_critic.device)
         target_vals = target_vals.to(self.actor_critic.device)
         self.actor_critic.eval()
-        probs, vals = self.actor_critic.forward(states)
-        self.actor_critic.train()
+        with T.cuda.amp.autocast():
+            probs, vals = self.actor_critic.forward(states)
+            self.actor_critic.train()
 
-        actor_loss = -(target_probs * T.log(probs)).sum(dim=1)
-        critic_loss = T.sum((target_vals - vals.view(-1))**2) / self.batch_size
-        total_loss = actor_loss.mean() + critic_loss
+            actor_loss = -(target_probs * T.log(probs)).sum(dim=1)
+            critic_loss = T.sum((target_vals - vals.view(-1))**2) / self.batch_size
+            total_loss = actor_loss.mean() + critic_loss
 
         self.actor_critic.optimizer.zero_grad()
-        total_loss.backward()
-        self.actor_critic.optimizer.step()
+        scaler.scale(total_loss).backward()
+        scaler.step(self.actor_critic.optimizer)
+        scaler.update()
+        
+        #self.actor_critic.optimizer.step()
 
     def save_model(self):
         print('...Saving Models...')

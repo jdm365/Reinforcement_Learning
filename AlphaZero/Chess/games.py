@@ -1,5 +1,7 @@
 import numpy as np
 import chess
+#import chess.svg
+#from flask import Flask, render_template
 from utils import *
 
 board = chess.Board()
@@ -53,3 +55,6 @@ class Chess:
         if not self.check_terminal(board):
             return None
         return self.check_terminal(board)
+        
+
+        

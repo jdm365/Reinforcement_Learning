@@ -1,4 +1,5 @@
 import numpy as np
+import torch as T
 
 class Node:
     def __init__(self, prior, prev_board=None, prev_action=None, game=None):
@@ -71,7 +72,11 @@ class Node:
             for idx, act in enumerate(actions):
                 probs[act] = visit_count_dist[idx]
             probs = np.array(probs)
-        return action, probs
+
+            action_array = np.zeros(8*8*82, dtype=int)
+            action_array[action] = 1
+            action_array = action_array.reshape(8, 8, 82)
+        return action_array, probs
 
 
 class MCTS:
@@ -109,7 +114,8 @@ class MCTS:
             value = self.game.get_reward(node.board)
             if value is None:
                 self.model.eval()
-                probs, value = self.model.forward(node.state)
+                with T.cuda.amp.autocast():
+                    probs, value = self.model.forward(node.state)
                 self.model.train()
                 probs = probs.cpu().detach().numpy()
                 value = value.cpu().detach().numpy()

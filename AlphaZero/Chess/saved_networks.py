@@ -9,7 +9,7 @@ class ChessNetworkConvolutional(nn.Module):
         super(ChessNetworkConvolutional, self).__init__()
         input_dims = input_dims[-2] * input_dims[-1]
         self.actor_head = nn.Sequential(
-            nn.Conv2d(in_channels=256, out_channels=1, kernel_size=1),
+            nn.Conv2d(in_channels=128, out_channels=1, kernel_size=1),
             nn.BatchNorm2d(1),
             nn.Tanh(),
             nn.Flatten(start_dim=1),
@@ -18,7 +18,7 @@ class ChessNetworkConvolutional(nn.Module):
         )
 
         self.critic_head = nn.Sequential(
-            nn.Conv2d(in_channels=256, out_channels=1, kernel_size=1),
+            nn.Conv2d(in_channels=128, out_channels=1, kernel_size=1),
             nn.BatchNorm2d(1),
             nn.Tanh(),
             nn.Flatten(start_dim=1),
@@ -30,17 +30,17 @@ class ChessNetworkConvolutional(nn.Module):
         self.to(self.device)
 
 
-    def block(self, in_filters=256):
+    def block(self, in_filters=128):
         block = nn.Sequential(
-            nn.Conv2d(in_channels=in_filters, out_channels=256, kernel_size=3, padding=1),
-            nn.BatchNorm2d(256),
+            nn.Conv2d(in_channels=in_filters, out_channels=128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1),
-            nn.BatchNorm2d(256)
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128)
         )
         return block
 
-    def downsample(self, state, out_chan=256, stride=1):
+    def downsample(self, state, out_chan=128, stride=1):
         in_chan = state.shape[1]
         if in_chan == out_chan:
             return state
@@ -51,7 +51,7 @@ class ChessNetworkConvolutional(nn.Module):
         downsample = downsample.to(self.device)
         return downsample(state)
 
-    def connect_residual(self, state, block_output, out_chan=256, stride=1):
+    def connect_residual(self, state, block_output, out_chan=128, stride=1):
         residual_connection = self.downsample(state, out_chan, stride)
         return F.relu(block_output + residual_connection)
 
@@ -64,13 +64,13 @@ class PositionalEncoding(nn.Module):
         self.first_block = first_block
 
         self.encodings = nn.Conv2d(
-            in_channels=1,
+            in_channels=6,
             out_channels=encoding_dims,
-            kernel_size=(2, 3),
-            stride=(2, 3),
-            padding=(0, 1)
+            kernel_size=(2, 2),
+            stride=(2, 2),
+            padding=0
             )
-        patch_dims = (input_dims[-2] - 2 - 1) * (input_dims[-1] - 3 - 1)
+        patch_dims = (input_dims[-2] // 2) * (input_dims[-1] // 2)
         if first_block:
             self.cls_token = nn.Parameter(T.zeros(1, 1, encoding_dims))
             self.pos_embed = nn.Parameter(T.zeros(1, 1 + patch_dims, \

@@ -51,25 +51,25 @@ def encode_queen_move(move, moves_array):
         north_east_value = end_rank - start_rank if (end_rank - start_rank) > 0 \
             and (end_file - start_file) > 0 else 0
         if north_east_value:
-            moves_array[start_rank, start_file, north_east_value + 7 - 1] = 1
+            moves_array[start_rank - 1, start_file - 1, north_east_value + 7 - 1] = 1
             return moves_array
 
         south_east_value = start_rank - end_rank if (start_rank - end_rank) > 0 \
             and (end_file - start_file) > 0 else 0
         if south_east_value:
-            moves_array[start_rank, start_file, south_east_value + 21 - 1] = 1
+            moves_array[start_rank - 1, start_file - 1, south_east_value + 21 - 1] = 1
             return moves_array
 
         south_west_value = start_rank - end_rank if (start_rank - end_rank) > 0 \
             and (start_file - end_file) > 0 else 0
         if south_west_value:
-            moves_array[start_rank, start_file, south_west_value + 35 - 1] = 1
+            moves_array[start_rank - 1, start_file - 1, south_west_value + 35 - 1] = 1
             return moves_array
 
         north_west_value = end_rank - start_rank if (end_rank - start_rank) > 0 \
             and (start_file - end_file) > 0 else 0
         if north_west_value:
-            moves_array[start_rank, start_file, north_west_value + 49 - 1] = 1
+            moves_array[start_rank - 1, start_file - 1, north_west_value + 49 - 1] = 1
             return moves_array
 
     north_value = end_rank - start_rank if (end_rank - start_rank) > 0 else 0
@@ -89,7 +89,7 @@ def encode_queen_move(move, moves_array):
 
     west_value = start_file - end_file if (start_file - end_file) > 0 else 0
     if west_value:
-        moves_array[start_rank - 1, start_file - 1, east_value + 42 - 1] = 1
+        moves_array[start_rank - 1, start_file - 1, west_value + 42 - 1] = 1
         return moves_array
 
 
@@ -102,7 +102,6 @@ def encode_knight_move(move, moves_array):
 
     start_file = ord(start_position[0]) - 96
     end_file = ord(end_position[0]) - 96
-    print(move)
 
     knight_moves = dict({
         '0': (2, 1),
@@ -114,7 +113,6 @@ def encode_knight_move(move, moves_array):
         '6': (1, -2),
         '7': (2, -1)
     })
-    move_num = ''
     for key, val in knight_moves.items():
         if val == (end_rank-start_rank, end_file-start_file):
             move_num = int(key)
@@ -188,6 +186,8 @@ def translate_queen_move(move):
     direction = move[2] // 7
     distance = move[2] % 7 + 1
 
+    #print(direction, start_file, start_rank, distance)
+
     if direction == 0:
         end_rank = start_rank + distance
         end_file = start_file
@@ -243,7 +243,7 @@ def translate_knight_move(move):
     start_file = move[1]
 
     start_square = chr(start_file + 97) + str(start_rank + 1)
-    direction = move[2] % 7 + 1
+    direction = move[2] % 8
 
     if direction == 0:
         end_rank = start_rank + 2
@@ -300,9 +300,9 @@ def translate_underpromotion_move(move):
 
     start_square = chr(start_file + 97) + str(start_rank + 1)
 
-    mapping = dict({0: 'N', 1: 'B', 2: 'R'})
-    direction = move[2] // 6
-    promoted_piece = mapping(move[2] % 3)
+    mapping = dict({0: 'n', 1: 'b', 2: 'r'})
+    direction = (move[2]-64) // 3
+    promoted_piece = mapping[(move[2] + 1) % 3]
 
     if direction == 0:
         end_rank = start_rank + 1
@@ -319,19 +319,19 @@ def translate_underpromotion_move(move):
     if direction == 2:
         end_rank = start_rank - 1
         end_file = start_file + 1
-        end_square = chr(end_file + 97) + str(end_rank + 1) + promoted_piece.lower()
+        end_square = chr(end_file + 97) + str(end_rank + 1) + promoted_piece
         return start_square + end_square
 
     if direction == 3:
         end_rank = start_rank - 1
         end_file = start_file
-        end_square = chr(end_file + 97) + str(end_rank + 1) + promoted_piece.lower()
+        end_square = chr(end_file + 97) + str(end_rank + 1) + promoted_piece
         return start_square + end_square
 
     if direction == 4:
         end_rank = start_rank - 1
         end_file = start_file - 1
-        end_square = chr(end_file + 97) + str(end_rank + 1) + promoted_piece.lower()
+        end_square = chr(end_file + 97) + str(end_rank + 1) + promoted_piece
         return start_square + end_square
 
     if direction == 5:
