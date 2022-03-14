@@ -29,8 +29,8 @@ class Agent:
         action, probs = node.choose_action(temperature)
         self.memory.remember(np.copy(node.state), probs)
         ## New root node
-        node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
-        value = self.game.get_reward(node.state)
+        node = Node(prior=0, prev_board=node.board, prev_action=action, game=self.game)
+        value = self.game.get_reward(node.board)
         game_idx = 1
 
         while value is None:
@@ -38,10 +38,10 @@ class Agent:
             action, probs = node.choose_action(temperature)
             self.memory.remember(np.copy(node.state), probs)
             ## New root node
-            node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
-            value = self.game.get_reward(node.state)
+            node = Node(prior=0, prev_board=node.board, prev_action=action, game=self.game)
+            value = self.game.get_reward(node.board)
             game_idx += 1
-            if game_idx == 15:
+            if game_idx == 80:
                 temperature = 0.01
         
         self.memory.remember(np.copy(node.state), probs)

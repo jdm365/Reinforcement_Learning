@@ -1,7 +1,7 @@
 import numpy as np
 
 class Node:
-    def __init__(self, prior, prev_state=None, prev_action=None, game=None):
+    def __init__(self, prior, prev_board=None, prev_action=None, game=None):
         self.game = game
 
         self.prior = prior
@@ -9,20 +9,23 @@ class Node:
         self.children = {}
         self.visit_count = 0
         self.value_sum = 0
-        self.state = self.game.get_next_state(prev_state, prev_action)
+        self.state, self.board = self.game.get_next_state(prev_board, prev_action)
 
-    def reset_state(self, state):
-        self.state = state
+    def reset_board(self, board):
+        self.board = board
 
     def expand(self, probs=None):
         if probs is None:
-            probs = np.random.uniform(0, 1, self.game.columns)
+            probs = np.random.uniform(0, 1, self.game.n_actions)
             probs /= sum(probs)
         for action, prob in enumerate(probs):
-            init_state = np.copy(self.state)
+            init_board = self.board.copy()
             if prob != 0:
-                self.children[action] = Node(prob, self.state, action, self.game)
-            self.reset_state(init_state)
+                action_array = np.zeros(8*8*82, dtype=int)
+                action_array[action] = 1
+                action_array = action_array.reshape(8, 8, 82)
+                self.children[action] = Node(prob, self.board, action_array, self.game)
+            self.reset_board(init_board)
     
     def expanded(self):
         return len(self.children) > 0
@@ -54,7 +57,7 @@ class Node:
         visit_counts = np.array([child.visit_count for child in self.children.values()])
         actions = [action for action in self.children.keys()]
 
-        probs = list(np.zeros(self.game.columns, dtype=int))
+        probs = list(np.zeros(self.game.n_actions, dtype=int))
         if temperature == 0:
             action = actions[np.argmax(visit_counts)]
             visit_count_dist = visit_counts / sum(visit_counts)
@@ -103,15 +106,15 @@ class MCTS:
                 search_path.append(node)
             
             ## EVALUATE
-            value = self.game.get_reward(node.state)
+            value = self.game.get_reward(node.board)
             if value is None:
                 self.model.eval()
                 probs, value = self.model.forward(node.state)
                 self.model.train()
                 probs = probs.cpu().detach().numpy()
                 value = value.cpu().detach().numpy()
-                valid_moves = self.game.get_valid_moves(node.state)
-                probs *= valid_moves
+                valid_moves = self.game.get_valid_moves(node.board)
+                probs *= valid_moves.flatten()
                 probs /= np.sum(probs)
 
                 ## EXPAND

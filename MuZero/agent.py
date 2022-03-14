@@ -44,7 +44,6 @@ class Agent:
 
 
 
-
         
         self.actor_critic.eval()
         probs, vals = self.actor_critic.forward(states)

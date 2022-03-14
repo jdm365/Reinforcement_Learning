@@ -7,7 +7,7 @@ import numpy as np
 class ChessNetworkConvolutional(nn.Module):
     def __init__(self, input_dims, n_actions):
         super(ChessNetworkConvolutional, self).__init__()
-        input_dims = input_dims[0] * input_dims[1]
+        input_dims = input_dims[-2] * input_dims[-1]
         self.actor_head = nn.Sequential(
             nn.Conv2d(in_channels=256, out_channels=1, kernel_size=1),
             nn.BatchNorm2d(1),

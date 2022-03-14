@@ -14,7 +14,7 @@ class Chess:
     def __init__(self):
         self.rows = 8
         self.columns = 8
-        self.init_state = chess.Board().reset()
+        self.n_actions = 8*8*82
 
     def get_valid_moves(self, board):
         valid_moves_array = np.zeros((8, 8, 82), dtype=int)
@@ -25,16 +25,16 @@ class Chess:
         return valid_moves_array
 
     def get_next_state(self, board, action):
-        action_array = np.zeros(8*8*82, dtype=int)
-        action_array[action] = 1
-        action_array = action_array.reshape(8, 8, 82)
-        coords = np.where(action_array == 1)
+        if board is None and action is None:
+            board = chess.Board()
+            return encode_board(board), board
+        coords = np.where(action == 1)
         action = tuple((*coords[0], *coords[1], *coords[2]))
         board = board.copy()
         move = decode_move(action)
         move = chess.Move.from_uci(move)
         board.push(move)
-        return -encode_board(board)
+        return -encode_board(board), board
 
     def check_terminal(self, board):
         if board.is_checkmate():
@@ -43,11 +43,13 @@ class Chess:
             return 0
         if board.is_insufficient_material():
             return 0
-        if board.is_threefold_repetition():
+        if board.can_claim_threefold_repetition():
             return 0
         if board.can_claim_fifty_moves():
             return 0
         return False
 
     def get_reward(self, board):
+        if not self.check_terminal(board):
+            return None
         return self.check_terminal(board)

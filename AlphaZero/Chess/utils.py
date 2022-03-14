@@ -1,5 +1,4 @@
 import numpy as np
-import chess
 
 def is_diag(move):
     start_position = move[:2]
@@ -85,7 +84,7 @@ def encode_queen_move(move, moves_array):
 
     east_value = end_file - start_file if (end_file - start_file) > 0 else 0
     if east_value:
-        moves_array[start_rank - 1, start_file - 1, west_value + 14 - 1] = 1
+        moves_array[start_rank - 1, start_file - 1, east_value + 14 - 1] = 1
         return moves_array
 
     west_value = start_file - end_file if (start_file - end_file) > 0 else 0
@@ -103,6 +102,7 @@ def encode_knight_move(move, moves_array):
 
     start_file = ord(start_position[0]) - 96
     end_file = ord(end_position[0]) - 96
+    print(move)
 
     knight_moves = dict({
         '0': (2, 1),
@@ -116,7 +116,7 @@ def encode_knight_move(move, moves_array):
     })
     move_num = ''
     for key, val in knight_moves.items():
-        if val == (start_rank-end_rank, start_file-end_file):
+        if val == (end_rank-start_rank, end_file-start_file):
             move_num = int(key)
     moves_array[start_rank - 1, start_file - 1, move_num + 56] = 1
     return moves_array
@@ -431,7 +431,3 @@ def encode_board(board):
         rooks_array, queens_array, kings_array))
     ## Shape (6, 8, 8)
     return board_array
-
-
-def decode_board(input_state):
-    ## input_state shape (6, 8, 8)
