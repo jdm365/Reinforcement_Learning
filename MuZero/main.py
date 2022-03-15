@@ -4,13 +4,13 @@ from games import Connect4
 
 
 if __name__ == '__main__':
-    agent = Agent(lr=1e-2, batch_size=10, n_simulations=200, \
+    agent = Agent(lr=1e-2, batch_size=2, n_simulations=10, \
         hidden_state_dims=(6, 6, 7), game=Connect4(), convolutional=True)
 
     def train(n_epochs):
         for epoch in tqdm(range(n_epochs)):
             agent.play_game()
-            if len(agent.memory.games) > 10:
+            if len(agent.memory.games) > 2:
                 agent.learn()
 
             if epoch % (n_epochs / 5) == 0:

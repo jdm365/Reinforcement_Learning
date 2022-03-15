@@ -1,5 +1,6 @@
 import numpy as np
 import torch as T
+import torch.nn.functional as F
 from replay_buffer import ReplayBuffer
 from networks import ActorCriticNetwork, RepresentationNetwork, DynamicsNetwork
 from monte_carlo_tree_search import MCTS, Node
@@ -12,7 +13,7 @@ class Agent:
         self.representation = RepresentationNetwork(lr, game.input_dims, hidden_state_dims)
         self.dynamics = DynamicsNetwork(lr, hidden_state_dims)
         self.tree_search = MCTS(self.actor_critic, self.representation, self.dynamics, n_simulations)
-        self.memory = ReplayBuffer(batch_size)
+        self.memory = ReplayBuffer(batch_size, game.n_actions)
         self.batch_size = batch_size
         self.game = game
 
@@ -44,9 +45,12 @@ class Agent:
 
     def learn(self):
         states, target_probs, target_rewards, target_vals, target_actions = self.memory.get_batch()
-
         states = T.tensor(states, dtype=T.float).to(self.representation.device)
-        target_actions = T.tensor(target_actions, dtype=T.float).to(self.dynamics.device)
+        states = states.unsqueeze(dim=1)
+
+        target_probs = target_probs.to(self.actor_critic.device)
+        target_vals = target_vals.to(self.actor_critic.device)
+        target_rewards = target_rewards.to(self.actor_critic.device)
 
         self.representation.eval()
         initial_hidden_states = self.representation.forward(states).to(self.dynamics.device)
@@ -58,7 +62,7 @@ class Agent:
         last_hidden_states = initial_hidden_states
         for i in range(self.memory.unroll_length):
             next_hidden_states, next_rewards = \
-                self.dynamics.forward(last_hidden_states, target_actions[i])
+                self.dynamics.forward(last_hidden_states, target_actions[:, i, 0])
             hidden_states.append(next_hidden_states.to(self.actor_critic.device))
             rewards.append(next_rewards.to(self.actor_critic.device))
             last_hidden_states = next_hidden_states
@@ -67,20 +71,20 @@ class Agent:
         self.actor_critic.eval()
         probs = []
         vals = []
-        for states in hidden_states:
-            probabilities, values = self.actor_critic.forward(states)
+        for state in hidden_states:
+            probabilities, values = self.actor_critic.forward(state)
             probs.append(probabilities)
             vals.append(values)
         self.actor_critic.train()
-
+       
         actor_loss = 0
         critic_loss = 0
         reward_loss = 0
         for i in range(self.memory.unroll_length):
-            actor_loss += -(target_probs[i] * T.log(probs[i])).sum(dim=1).mean()
-            critic_loss += T.sum((target_vals[i] - vals[i].view(-1))**2) / self.batch_size
-            reward_loss += T.sum((target_rewards[i] - rewards[i].view(-1))**2) / self.batch_size
-        total_loss = actor_loss + critic_loss + reward_loss
+            actor_loss += -target_probs[:, i, :] * T.log(probs[i])
+            critic_loss += F.mse_loss(target_vals[:, i, 0], vals[i])
+            reward_loss += F.mse_loss(target_rewards[:, i, 0], rewards[i])
+        total_loss = actor_loss.sum(dim=1).mean() + critic_loss + reward_loss
 
         self.actor_critic.optimizer.zero_grad()
         self.representation.optimizer.zero_grad()

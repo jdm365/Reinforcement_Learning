@@ -111,7 +111,7 @@ class MCTS:
             hidden_state, reward = self.dynamics.forward(parent.hidden_state, last_action)
 
             ## EXPAND
-            self.expand_node(node, probs, hidden_state, reward)
+            self.expand_node(node, probs[0], hidden_state, reward)
             
             ## BACKPROPOGATE
-            self.backprop(search_path, value)
+            self.backprop(search_path, value[0])

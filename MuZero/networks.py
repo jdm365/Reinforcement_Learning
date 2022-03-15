@@ -37,8 +37,8 @@ class ActorCriticNetwork(nn.Module):
         out = self.conv_block_4(out)
         state_ = self.network.connect_residual(state_, out)
 
-        probs = self.actor_head(state_)[0]
-        value = self.critic_head(state_)[0]
+        probs = self.actor_head(state_)
+        value = self.critic_head(state_)
         return probs, value
 
     def save_models(self):
@@ -79,7 +79,7 @@ class RepresentationNetwork(nn.Module):
     def reshape_state(self, state):
         if len(state.shape) == 2:
             return state.reshape(1, 1, *state.shape)
-        return state.reshape(state.shape[0], 1, *state.shape[1:])
+        return state
 
     def forward(self, state):
         state = T.tensor(self.reshape_state(state), dtype=T.float).to(self.device)
@@ -138,8 +138,11 @@ class DynamicsNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, state, action):
-        casting_tensor = T.ones(state.shape[0], 1, *state.shape[2:]).to(self.device)
-        action = T.mul(casting_tensor, action)
+        casting_tensor = T.ones(1, *state.shape[2:]).to(self.device)
+        if type(action) != int:
+            action = T.stack([act * casting_tensor for act in action])
+        else:
+            action = (action * casting_tensor).unsqueeze(0)
         input = T.cat((state, action), dim=1)
 
         out = self.conv_block_1(input)
