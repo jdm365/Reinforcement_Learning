@@ -6,13 +6,13 @@ from saved_networks import Connect4NetworkConvolutional
 
 
 class ActorCriticNetwork(nn.Module):
-    def __init__(self, lr, input_dims, n_actions):
+    def __init__(self, lr, input_dims, n_actions, convolutional=True):
         super(ActorCriticNetwork, self).__init__()
         self.filename = 'Trained_Models/actor_critic'
         self.input_dims = input_dims
         self.network = Connect4NetworkConvolutional(input_dims, n_actions)
 
-        self.conv_block_1 = self.network.block(in_filters=1)
+        self.conv_block_1 = self.network.block(in_filters=6)
         self.conv_block_2 = self.network.block()
         self.conv_block_3 = self.network.block()
         self.conv_block_4 = self.network.block()
@@ -57,9 +57,9 @@ class RepresentationNetwork(nn.Module):
         self.filename = 'Trained_Models/representation'
         self.input_dims = input_dims
         self.output_dims = output_dims
-        self.network = Connect4NetworkConvolutional(input_dims)
+        self.network = Connect4NetworkConvolutional(self.input_dims)
 
-        self.conv_block_1 = self.network.block(in_filters=input_dims[1])
+        self.conv_block_1 = self.network.block(in_filters=1)
         self.conv_block_2 = self.network.block()
         self.conv_block_3 = self.network.block()
         self.conv_block_4 = self.network.block()
@@ -69,14 +69,21 @@ class RepresentationNetwork(nn.Module):
             nn.BatchNorm2d(output_dims[1]),
             nn.ReLU(),
             nn.Flatten(start_dim=2),
-            nn.Linear(input_dims[-2]*input_dims[-1], output_dims[-2]*output_dims[-1])
+            nn.Linear(self.input_dims[-2]*self.input_dims[-1], output_dims[-2]*output_dims[-1])
         )
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr, weight_decay=1e-5)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
+    def reshape_state(self, state):
+        if len(state.shape) == 2:
+            return state.reshape(1, 1, *state.shape)
+        return state.reshape(state.shape[0], 1, *state.shape[1:])
+
     def forward(self, state):
+        state = T.tensor(self.reshape_state(state), dtype=T.float).to(self.device)
+        
         out = self.conv_block_1(state)
         state_ = self.network.connect_residual(state, out)
 
@@ -89,7 +96,7 @@ class RepresentationNetwork(nn.Module):
         out = self.conv_block_4(out)
         state_ = self.network.connect_residual(state_, out)
 
-        representation_hidden_state = self.representation(state_).reshape(self.input_dims[0], *self.output_dims)
+        representation_hidden_state = self.representation(state_).reshape(state.shape[0], *self.output_dims)
         return representation_hidden_state
 
     def save_models(self):
@@ -109,14 +116,14 @@ class DynamicsNetwork(nn.Module):
         self.input_dims = input_dims
         self.network = Connect4NetworkConvolutional(input_dims)
 
-        self.conv_block_1 = self.network.block(in_filters=input_dims[1])
+        self.conv_block_1 = self.network.block(in_filters=input_dims[0]+1)
         self.conv_block_2 = self.network.block()
         self.conv_block_3 = self.network.block()
         self.conv_block_4 = self.network.block()
 
         self.hidden_state_prediction_network = nn.Sequential(
-            nn.Conv2d(in_channels=256, out_channels=input_dims[1], kernel_size=1),
-            nn.BatchNorm2d(input_dims[1])
+            nn.Conv2d(in_channels=256, out_channels=input_dims[0], kernel_size=1),
+            nn.BatchNorm2d(input_dims[0])
         )
         self.reward_prediction_network = nn.Sequential(
             nn.Conv2d(in_channels=256, out_channels=1, kernel_size=1),
@@ -131,7 +138,9 @@ class DynamicsNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, state, action):
-        input = T.cat((state, action), dim=1).to(self.device)
+        casting_tensor = T.ones(state.shape[0], 1, *state.shape[2:]).to(self.device)
+        action = T.mul(casting_tensor, action)
+        input = T.cat((state, action), dim=1)
 
         out = self.conv_block_1(input)
         state_ = self.network.connect_residual(input, out)

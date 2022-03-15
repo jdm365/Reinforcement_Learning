@@ -44,8 +44,7 @@ class MCTS:
         end
         '''
 
-    def expand_node(self, node, to_play, probs, hidden_state, reward):
-        node.to_play = to_play
+    def expand_node(self, node, probs, hidden_state, reward):
         node.hidden_state = hidden_state
         node.reward = reward
         ## MuZero doesn't mask illegal actions in the tree search
@@ -56,8 +55,8 @@ class MCTS:
     def calc_ucb(self, parent, child):
         c1 = 1.25
         c2 = 19652
-        x = c1 + np.log((parent.visit_counts + c2 + 1) / c2)
-        prior_term = parent.prior * x * np.sqrt(parent.visit_counts) / (1 + child.visit_counts)
+        x = c1 + np.log((parent.visit_count + c2 + 1) / c2)
+        prior_term = parent.prior * x * np.sqrt(parent.visit_count) / (1 + child.visit_count)
         if child.visit_count > 0:
             value_term = -child.value()
         else:
@@ -69,13 +68,13 @@ class MCTS:
         for child in node.children.values():
             scores.append(self.calc_ucb(node, child))
         idx = scores.index(max(scores))
-        best_action = list(self.children.keys())[idx]
-        best_child = list(self.children.values())[idx]
+        best_action = list(node.children.keys())[idx]
+        best_child = list(node.children.values())[idx]
         return best_action, best_child
 
-    def choose_action(self, temperature, action_space_size):
-        visit_counts = np.array([child.visit_count for child in self.children.values()])
-        actions = [action for action in self.children.keys()]
+    def choose_action(self, temperature, action_space_size, node):
+        visit_counts = np.array([child.visit_count for child in node.children.values()])
+        actions = [action for action in node.children.keys()]
         eta = 5e-2
 
         visit_count_dist = visit_counts ** (1 / (temperature + eta))
@@ -85,13 +84,13 @@ class MCTS:
         probs = np.zeros(action_space_size)
         for idx, act in enumerate(actions):
             probs[act] = visit_count_dist[idx]
-        return action
+        return action, probs
 
     def backprop(self, search_path, value):
         for idx, node in enumerate(reversed(search_path)):
             node.value_sum += value * pow(-1, idx+1)
             node.visit_count += 1
-            value = node.reward + self.dicount * value
+            value = node.reward + self.discount * value
 
     def search(self, root):
         for _ in range(self.n_simulations):
@@ -110,11 +109,9 @@ class MCTS:
             last_action = action_history[-1]
             probs, value = self.actor_critic.forward(parent.hidden_state)
             hidden_state, reward = self.dynamics.forward(parent.hidden_state, last_action)
-            to_play = pow(-1, len(action_history))
 
             ## EXPAND
-            self.expand_node(node, to_play, probs, hidden_state, reward)
+            self.expand_node(node, probs, hidden_state, reward)
             
             ## BACKPROPOGATE
             self.backprop(search_path, value)
-        return root

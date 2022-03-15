@@ -2,7 +2,6 @@ import numpy as np
 import torch as T
 from replay_buffer import ReplayBuffer
 from networks import ActorCriticNetwork, RepresentationNetwork, DynamicsNetwork
-from games import Connect4
 from monte_carlo_tree_search import MCTS, Node
 import pygame
 
@@ -12,50 +11,84 @@ class Agent:
         self.actor_critic = ActorCriticNetwork(lr, hidden_state_dims, game.n_actions, convolutional)
         self.representation = RepresentationNetwork(lr, game.input_dims, hidden_state_dims)
         self.dynamics = DynamicsNetwork(lr, hidden_state_dims)
-        self.tree_search = MCTS(self.actor_critic, self.representation, self.dynamics, n_simulations, game)
+        self.tree_search = MCTS(self.actor_critic, self.representation, self.dynamics, n_simulations)
         self.memory = ReplayBuffer(batch_size)
         self.batch_size = batch_size
         self.game = game
 
-    def backup(self, search_path, value):
-        rewards = []
-        for i in range(len(search_path)):
+    def backup(self, n_moves, value):
+        values = []
+        for i in range(n_moves):
             factor = pow(-1, i+1)
-            rewards.append(value * factor)
-        return list(reversed(rewards))
+            values.append(value * factor)
+        return list(reversed(values))
 
     def play_game(self):
-        self.game.state = self.game.init_state
-        while self.game.check_terminal is False:
+        state = self.game.init_state
+        reward = 0
+        while self.game.check_terminal(state) is False:
             root = Node(prior=0)
-            hidden_state = self.representation.forward(self.game.state)
-            self.tree_search.expand_node(root, 1, self.game.get_valid_moves(), hidden_state)
-            node = self.tree_search.search(root)
-            action, probs = self.tree_search.choose_action(1.0, self.game.columns)
-            self.memory.remember(self.game.state, probs)
-            self.game.iter_state(action)
-        self.backup(self.memory.episode_values, self.game.get_reward())
+            hidden_state = self.representation.forward(state)
+            self.tree_search.expand_node(root, self.game.get_valid_moves(state), \
+                hidden_state, reward)
+            self.tree_search.search(root)
+            action, probs = self.tree_search.choose_action(1.0, self.game.n_actions, \
+                root)
+            state = self.game.get_next_state(state, action)
+            reward = self.game.get_reward(state)
+            self.memory.remember(state, probs, reward, action)
+
+        self.memory.episode_values = self.backup(len(self.memory.episode_states), \
+                                                self.game.get_reward(state))
         self.memory.store_episode()
 
     def learn(self):
-        states, target_probs, target_vals = self.memory.get_batch()
-        
+        states, target_probs, target_rewards, target_vals, target_actions = self.memory.get_batch()
 
+        states = T.tensor(states, dtype=T.float).to(self.representation.device)
+        target_actions = T.tensor(target_actions, dtype=T.float).to(self.dynamics.device)
 
+        self.representation.eval()
+        initial_hidden_states = self.representation.forward(states).to(self.dynamics.device)
+        self.representation.train()
 
+        self.dynamics.eval()
+        hidden_states = []
+        rewards = []
+        last_hidden_states = initial_hidden_states
+        for i in range(self.memory.unroll_length):
+            next_hidden_states, next_rewards = \
+                self.dynamics.forward(last_hidden_states, target_actions[i])
+            hidden_states.append(next_hidden_states.to(self.actor_critic.device))
+            rewards.append(next_rewards.to(self.actor_critic.device))
+            last_hidden_states = next_hidden_states
+        self.dynamics.train()
 
-        
         self.actor_critic.eval()
-        probs, vals = self.actor_critic.forward(states)
+        probs = []
+        vals = []
+        for states in hidden_states:
+            probabilities, values = self.actor_critic.forward(states)
+            probs.append(probabilities)
+            vals.append(values)
         self.actor_critic.train()
 
-        actor_loss = -(target_probs * T.log(probs)).sum(dim=1)
-        critic_loss = T.sum((target_vals - vals.view(-1))**2) / self.batch_size
-        total_loss = actor_loss.mean() + critic_loss
+        actor_loss = 0
+        critic_loss = 0
+        reward_loss = 0
+        for i in range(self.memory.unroll_length):
+            actor_loss += -(target_probs[i] * T.log(probs[i])).sum(dim=1).mean()
+            critic_loss += T.sum((target_vals[i] - vals[i].view(-1))**2) / self.batch_size
+            reward_loss += T.sum((target_rewards[i] - rewards[i].view(-1))**2) / self.batch_size
+        total_loss = actor_loss + critic_loss + reward_loss
 
         self.actor_critic.optimizer.zero_grad()
+        self.representation.optimizer.zero_grad()
+        self.dynamics.optimizer.zero_grad()
         total_loss.backward()
         self.actor_critic.optimizer.step()
+        self.representation.optimizer.step()
+        self.dynamics.optimizer.step()
 
     def save_model(self):
         print('...Saving Models...')
