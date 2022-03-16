@@ -74,7 +74,7 @@ class Agent:
         for state in hidden_states:
             probabilities, values = self.actor_critic.forward(state)
             probs.append(probabilities)
-            vals.append(values)
+            vals.append(values.squeeze())
         self.actor_critic.train()
        
         actor_loss = 0

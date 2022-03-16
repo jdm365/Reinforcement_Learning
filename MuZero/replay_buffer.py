@@ -24,7 +24,7 @@ class ReplayBuffer:
         self.episode_actions.append(action)
 
     def get_batch(self):
-        games = random.sample(self.games, self.batch_size)
+        games = random.choices(self.games, k=self.batch_size)
 
         states = []
         probs = T.zeros((self.batch_size, self.unroll_length, self.n_actions), dtype=T.float)

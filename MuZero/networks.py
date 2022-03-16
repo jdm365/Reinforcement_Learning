@@ -82,7 +82,7 @@ class RepresentationNetwork(nn.Module):
         return state
 
     def forward(self, state):
-        state = T.tensor(self.reshape_state(state), dtype=T.float).to(self.device)
+        state = T.from_numpy(self.reshape_state(state)).float().to(self.device)
         
         out = self.conv_block_1(state)
         state_ = self.network.connect_residual(state, out)
