@@ -15,7 +15,7 @@ class ActorCriticNetwork(nn.Module):
         self.conv_block_1 = self.network.block(in_filters=6)
         self.conv_block_2 = self.network.block()
         self.conv_block_3 = self.network.block()
-        self.conv_block_4 = self.network.block()
+        #self.conv_block_4 = self.network.block()
 
         self.actor_head = self.network.actor_head
         self.critic_head = self.network.critic_head
@@ -34,8 +34,8 @@ class ActorCriticNetwork(nn.Module):
         out = self.conv_block_3(out)
         state_ = self.network.connect_residual(state_, out)
 
-        out = self.conv_block_4(out)
-        state_ = self.network.connect_residual(state_, out)
+        #out = self.conv_block_4(out)
+        #state_ = self.network.connect_residual(state_, out)
 
         probs = self.actor_head(state_)
         value = self.critic_head(state_)
@@ -61,8 +61,8 @@ class RepresentationNetwork(nn.Module):
 
         self.conv_block_1 = self.network.block(in_filters=1)
         self.conv_block_2 = self.network.block()
-        self.conv_block_3 = self.network.block()
-        self.conv_block_4 = self.network.block()
+        #self.conv_block_3 = self.network.block()
+        #self.conv_block_4 = self.network.block()
 
         self.representation = nn.Sequential(
             nn.Conv2d(in_channels=256, out_channels=output_dims[1], kernel_size=1),
@@ -90,11 +90,11 @@ class RepresentationNetwork(nn.Module):
         out = self.conv_block_2(out)
         state_ = self.network.connect_residual(state_, out)
 
-        out = self.conv_block_3(out)
-        state_ = self.network.connect_residual(state_, out)
+        #out = self.conv_block_3(out)
+        #state_ = self.network.connect_residual(state_, out)
 
-        out = self.conv_block_4(out)
-        state_ = self.network.connect_residual(state_, out)
+        #out = self.conv_block_4(out)
+        #state_ = self.network.connect_residual(state_, out)
 
         representation_hidden_state = self.representation(state_).reshape(state.shape[0], *self.output_dims)
         return representation_hidden_state
@@ -118,8 +118,8 @@ class DynamicsNetwork(nn.Module):
 
         self.conv_block_1 = self.network.block(in_filters=input_dims[0]+1)
         self.conv_block_2 = self.network.block()
-        self.conv_block_3 = self.network.block()
-        self.conv_block_4 = self.network.block()
+        #self.conv_block_3 = self.network.block()
+        #self.conv_block_4 = self.network.block()
 
         self.hidden_state_prediction_network = nn.Sequential(
             nn.Conv2d(in_channels=256, out_channels=input_dims[0], kernel_size=1),
@@ -151,11 +151,11 @@ class DynamicsNetwork(nn.Module):
         out = self.conv_block_2(out)
         state_ = self.network.connect_residual(state_, out)
 
-        out = self.conv_block_3(out)
-        state_ = self.network.connect_residual(state_, out)
+        #out = self.conv_block_3(out)
+        #state_ = self.network.connect_residual(state_, out)
 
-        out = self.conv_block_4(out)
-        state_ = self.network.connect_residual(state_, out)
+        #out = self.conv_block_4(out)
+        #state_ = self.network.connect_residual(state_, out)
 
         predicted_hidden_state = self.hidden_state_prediction_network(state_)
         predicted_reward = self.reward_prediction_network(state_).squeeze()

@@ -97,10 +97,14 @@ class Agent:
     def save_model(self):
         print('...Saving Models...')
         self.actor_critic.save_models()
+        self.representation.save_models()
+        self.dynamics.save_models()
 
     def load_model(self, cpu=False):
         print('...Loading Models...')
         self.actor_critic.load_models(cpu)
+        self.representation.load_models(cpu)
+        self.dynamics.load_models(cpu)
 
 
     def play_agent(self, cpu=False):
