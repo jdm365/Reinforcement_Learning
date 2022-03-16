@@ -1,7 +1,7 @@
 import numpy as np
 import pygame
 
-## Traditional 7x6 connect 4 game
+## Traditional 6x7 connect 4 game
 class Connect4:
     def __init__(self):
         self.rows = 6
