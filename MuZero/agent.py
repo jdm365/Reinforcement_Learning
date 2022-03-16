@@ -45,8 +45,8 @@ class Agent:
 
     def learn(self):
         states, target_probs, target_rewards, target_vals, target_actions = self.memory.get_batch()
-        states = T.tensor(states, dtype=T.float).to(self.representation.device)
-        states = states.unsqueeze(dim=1)
+        states = np.stack(states)
+        states = np.expand_dims(states, axis=1)
 
         target_probs = target_probs.to(self.actor_critic.device)
         target_vals = target_vals.to(self.actor_critic.device)
