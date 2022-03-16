@@ -13,7 +13,7 @@ if __name__ == '__main__':
             if len(agent.memory.games) > 10:
                 agent.learn()
 
-            if epoch % (n_epochs / 5) == 0:
+            if epoch % (n_epochs // 10) == 0:
                 agent.save_model()
         agent.save_model()
 

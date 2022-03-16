@@ -1,5 +1,4 @@
 import numpy as np
-from sympy import Idx
 
 class Node:
     def __init__(self, prior):
@@ -21,9 +20,11 @@ class Node:
 
 
 class MCTS:
-    def __init__(self, actor_critic, representation, dynamics, n_simulations):
+    def __init__(self, actor_critic, representation, dynamics, n_simulations, dirichlet_alpha=0.3, exploration_factor=0.25):
         self.n_simulations = n_simulations
         self.discount = 0.997
+        self.dirichlet_alpha = dirichlet_alpha
+        self.exploration_factor = exploration_factor
         self.actor_critic = actor_critic
         self.representation = representation
         self.dynamics = dynamics
@@ -62,6 +63,13 @@ class MCTS:
         else:
             value_term = 0
         return value_term + prior_term
+
+    def add_exploration_noise(self, node):
+        actions = list(node.children.keys())
+        noise = np.random.dirichlet([self.dirichlet_alpha] * len(actions))
+        factor = self.exploration_factor
+        for a, n in zip(actions, noise):
+            node.children[a].prior = node.children[a].prior * (1 - factor) + n * factor
 
     def select_child(self, node):
         scores = []
@@ -112,6 +120,7 @@ class MCTS:
 
             ## EXPAND
             self.expand_node(node, probs[0], hidden_state, reward)
+            self.add_exploration_noise(node)
             
             ## BACKPROPOGATE
             self.backprop(search_path, value[0])
