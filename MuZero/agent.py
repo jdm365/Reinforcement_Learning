@@ -114,8 +114,8 @@ class Agent:
         while not game_over:
             temperature = 0
 
-            initial_state = self.game.init_state
-            self.game.draw_board(initial_state)
+            state = self.game.init_state
+            self.game.draw_board(state)
             while not clicked:
                 for event in pygame.event.get():
                     if event.type == pygame.MOUSEBUTTONDOWN:
@@ -124,19 +124,24 @@ class Agent:
             clicked = False
             action = posx // 100
             ## New root node
-            node = Node(prior=0.1428, prev_state=initial_state, prev_action=action, game=self.game)
-            value = self.game.get_reward(node.state)
+            node = Node(prior=0)
+            value = self.game.get_reward(state)
+            reward = 0
 
-            while value is None:
-                node = self.tree_search.run(node)
-                action, probs = node.choose_action(temperature)
-                ## New root node
-                node = Node(prior=probs[action], prev_state=node.state, prev_action=action, game=self.game)
-                value = self.game.get_reward(node.state)
-                if value is not None:
+            while self.game.check_terminal(state) is False:
+                root = Node(prior=0)
+                hidden_state = self.representation.forward(state)
+                self.tree_search.expand_node(root, self.game.get_valid_moves(state), \
+                    hidden_state, reward)
+                self.tree_search.search(root)
+                action, probs = self.tree_search.choose_action(1.0, self.game.n_actions, \
+                    root)
+                state = self.game.get_next_state(state, action)
+                reward = self.game.get_reward(state)
+                if self.game.check_terminal(state) != False:
                     winner = 'You lost loser MWAHAHAHAH!'
                     break
-                self.game.draw_board(node.state)
+                self.game.draw_board(state)
                 while not clicked:
                     for event in pygame.event.get():
                         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -145,8 +150,8 @@ class Agent:
                 clicked = False
                 action = posx // 100
                 ## New root node
-                node = Node(prior=0.1428, prev_state=node.state, prev_action=action, game=self.game)
-                value = self.game.get_reward(node.state)
+                node = Node(prior=0)
+                value = self.game.get_reward(state)
                 winner = 'You won, darn'
             game_over = True
-            self.game.draw_board(node.state, winner=winner)
+            self.game.draw_board(state, winner=winner)
