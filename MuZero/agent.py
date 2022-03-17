@@ -116,7 +116,7 @@ class Agent:
         game_over = False
         clicked = False
         while not game_over:
-            temperature = 0
+            temperature = 0.0
 
             state = self.game.init_state
             self.game.draw_board(state)
