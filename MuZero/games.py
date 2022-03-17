@@ -1,5 +1,7 @@
 import numpy as np
+import torch as T
 import pygame
+import gym
 
 ## Traditional 6x7 connect 4 game
 class Connect4:
@@ -25,7 +27,7 @@ class Connect4:
 
     def get_valid_moves(self, board):
         moves_available = False
-        valid_moves = [0 for i in range(self.columns)]
+        valid_moves = [0 for _ in range(self.columns)]
         for col in range(self.columns):
             if list(board[:, col]).count(0) != 0:
                 valid_moves[col] = 1
@@ -146,3 +148,32 @@ class Connect4:
         
 
 
+
+class GymGames:
+    def __init__(self, env_name):
+        self.env = gym.make(env_name)
+        self.input_dims = self.env.observation_space.shape
+        self.n_actions = self.env.action_space.n
+        self.init_state = self.env.reset()
+        self.n_stacked_frames = 16
+
+    def get_next_state(self, action):
+        state = T.zeros((self.input_dims[2:], self.n_stacked_frames*self.input_dims[2]), dtype=T.float)
+        rewards = 0
+        for i in range(self.n_stacked_frames):
+            next_state, reward, done, _ = self.env.step(action)
+            rewards += reward
+            state[:, :, i:i+3] = next_state
+            if done:
+                return None
+        return state.permute(2, 0, 1).contiguous(), rewards
+
+    def get_valid_moves(self):
+        return self.env.action_space.n
+
+    def check_terminal(self, action):
+        return self.get_next_state(action)
+
+    def get_reward(self, action):
+        return self.get_next_state(action)[1]
+    

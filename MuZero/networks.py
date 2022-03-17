@@ -143,8 +143,10 @@ class DynamicsNetwork(nn.Module):
             action = F.one_hot(T.tensor(action), self.n_actions)
             action = action.repeat(1, 1, state.shape[2]).reshape(1, 1, *state.shape[2:])
         else:
-            action = F.one_hot(action, self.n_actions)
+            action = F.one_hot(action.long(), self.n_actions)
             action = action.repeat(1, 1, state.shape[2]).reshape(state.shape[0], 1, *state.shape[2:])
+
+        action = action.to(self.device)
 
         input = T.cat((state, action), dim=1)
         out = self.conv_block_1(input)

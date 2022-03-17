@@ -44,7 +44,7 @@ class ReplayBuffer:
             values[game_idx, :, 0] = T.tensor(game_values[idx:idx+self.unroll_length], \
                 dtype=T.float)
             actions[game_idx, :, 0] = T.tensor(game_actions[idx:idx+self.unroll_length], \
-                dtype=T.float)
+                dtype=T.long)
         return states, probs, rewards, values, actions
 
     def store_episode(self):

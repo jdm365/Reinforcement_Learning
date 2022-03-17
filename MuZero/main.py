@@ -4,7 +4,7 @@ from games import Connect4
 
 
 if __name__ == '__main__':
-    agent = Agent(lr=1e-2, batch_size=64, n_simulations=400, \
+    agent = Agent(lr=1e-2, batch_size=64, n_simulations=100, \
         hidden_state_dims=(128, 6, 7), game=Connect4(), convolutional=True)
 
     def train(n_epochs):
