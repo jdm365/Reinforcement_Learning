@@ -9,10 +9,12 @@ import pygame
 
 class Agent:
     def __init__(self, lr, batch_size, n_simulations, hidden_state_dims, game, convolutional=True):
-        self.actor_critic = ActorCriticNetwork(lr, hidden_state_dims, game.n_actions, convolutional)
+        self.actor_critic = ActorCriticNetwork(lr, hidden_state_dims, \
+            game.n_actions, hidden_state_dims, convolutional)
         self.representation = RepresentationNetwork(lr, game.input_dims, hidden_state_dims)
         self.dynamics = DynamicsNetwork(lr, hidden_state_dims, game.n_actions)
-        self.tree_search = MCTS(self.actor_critic, self.representation, self.dynamics, n_simulations)
+        self.tree_search = MCTS(self.actor_critic, self.representation, \
+            self.dynamics, n_simulations)
         self.memory = ReplayBuffer(batch_size, game.n_actions)
         self.batch_size = batch_size
         self.game = game

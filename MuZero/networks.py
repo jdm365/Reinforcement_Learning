@@ -6,13 +6,13 @@ from saved_networks import Connect4NetworkConvolutional
 
 
 class ActorCriticNetwork(nn.Module):
-    def __init__(self, lr, input_dims, n_actions, convolutional=True):
+    def __init__(self, lr, input_dims, n_actions, hidden_state_dims, convolutional=True):
         super(ActorCriticNetwork, self).__init__()
         self.filename = 'Trained_Models/actor_critic'
         self.input_dims = input_dims
         self.network = Connect4NetworkConvolutional(input_dims, n_actions)
 
-        self.conv_block_1 = self.network.block(in_filters=6)
+        self.conv_block_1 = self.network.block(in_filters=hidden_state_dims[0])
         self.conv_block_2 = self.network.block()
         self.conv_block_3 = self.network.block()
         #self.conv_block_4 = self.network.block()
@@ -65,8 +65,8 @@ class RepresentationNetwork(nn.Module):
         #self.conv_block_4 = self.network.block()
 
         self.representation = nn.Sequential(
-            nn.Conv2d(in_channels=256, out_channels=output_dims[1], kernel_size=1),
-            nn.BatchNorm2d(output_dims[1]),
+            nn.Conv2d(in_channels=256, out_channels=output_dims[0], kernel_size=1),
+            nn.BatchNorm2d(output_dims[0]),
             nn.ReLU(),
             nn.Flatten(start_dim=2),
             nn.Linear(self.input_dims[-2]*self.input_dims[-1], output_dims[-2]*output_dims[-1])
@@ -145,7 +145,7 @@ class DynamicsNetwork(nn.Module):
         else:
             action = F.one_hot(action, self.n_actions)
             action = action.repeat(1, 1, state.shape[2]).reshape(state.shape[0], 1, *state.shape[2:])
-            
+
         input = T.cat((state, action), dim=1)
         out = self.conv_block_1(input)
         state_ = self.network.connect_residual(input, out)
