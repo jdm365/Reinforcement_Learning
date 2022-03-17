@@ -110,10 +110,11 @@ class RepresentationNetwork(nn.Module):
         
 
 class DynamicsNetwork(nn.Module):
-    def __init__(self, lr, input_dims):
+    def __init__(self, lr, input_dims, n_actions):
         super(DynamicsNetwork, self).__init__()
         self.filename = 'Trained_Models/dynamics'
         self.input_dims = input_dims
+        self.n_actions = n_actions
         self.network = Connect4NetworkConvolutional(input_dims)
 
         self.conv_block_1 = self.network.block(in_filters=input_dims[0]+1)
@@ -138,13 +139,14 @@ class DynamicsNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, state, action):
-        casting_tensor = T.ones(1, *state.shape[2:]).to(self.device)
-        if type(action) != int:
-            action = T.stack([act * casting_tensor for act in action])
+        if type(action) == int:
+            action = F.one_hot(T.tensor(action), self.n_actions)
+            action = action.repeat(1, 1, state.shape[2]).reshape(1, 1, *state.shape[2:])
         else:
-            action = (action * casting_tensor).unsqueeze(0)
+            action = F.one_hot(action, self.n_actions)
+            action = action.repeat(1, 1, state.shape[2]).reshape(state.shape[0], 1, *state.shape[2:])
+            
         input = T.cat((state, action), dim=1)
-
         out = self.conv_block_1(input)
         state_ = self.network.connect_residual(input, out)
 
