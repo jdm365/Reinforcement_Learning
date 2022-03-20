@@ -7,11 +7,15 @@ I decided to create a separate repository not long ago to host all of my RL work
 of time on it. 
 
 Some of the projects I have enjoyed the most thus far are creating an AlphaZero program and teaching in to play
-connect 4, and doing the same with DeepMind's newer model MuZero. 
+connect 4 and chess, and doing the same with DeepMind's newer model MuZero.
+
+![This is an image] (AlphaZero.png)
 
 I made some adaptations for the AlphaZero implementation to attempt to train faster (and hopefully better)
 by using a vision-esque transformer network structure rather than the standard ResNet architecture employed
 by DeepMind and others.
+
+[Vision Transformer Paper] (https://arxiv.org/abs/2010.11929)
 
 I plan to continue this work in the future and keep learning and experimenting with cool new ideas.
 
@@ -30,4 +34,4 @@ at least) does not neccessitate a giant ResNet architecture.
 I would love to do some digging soon and try to figure out which models to use in 1) deterministic cases
 and 2) stochastic cases.
 
-I also would like to study and try to implement model-based meta-policy optimization at some point. -> https://arxiv.org/abs/1809.05214
+I also would like to study and try to implement [model-based meta-policy optimization] at some point. (https://arxiv.org/abs/1809.05214)
