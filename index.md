@@ -1,37 +1,33 @@
-## Welcome to GitHub Pages
+## Work in this Repository
 
-You can use the [editor on GitHub](https://github.com/jdm365/Reinforcement_Learning/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+Welocme! The work in this repository represents a combination of udemy course work authored by Dr. Phil Tabor, and
+to a larger extent independent work I have embarked on for fun.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+I decided to create a separate repository not long ago to host all of my RL work as I spend the greatest amount
+of time on it. 
 
-### Markdown
+Some of the projects I have enjoyed the most thus far are creating an AlphaZero program and teaching in to play
+connect 4, and doing the same with DeepMind's newer model MuZero. 
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+I made some adaptations for the AlphaZero implementation to attempt to train faster (and hopefully better)
+by using a vision-esque transformer network structure rather than the standard ResNet architecture employed
+by DeepMind and others.
 
-```markdown
-Syntax highlighted code block
+I plan to continue this work in the future and keep learning and experimenting with cool new ideas.
 
-# Header 1
-## Header 2
-### Header 3
+### Future Areas of Study
 
-- Bulleted
-- List
+I did notice that in the MuZero paper, the DeepMind team mentioned that they were not able to acheive great 
+performance in the game of Go when they increased the Monte Carlo Tree Search simulation number much past
+100 (was 1600 in AlphaGo for reference). They attributed this to the model's lack of ability to project
+future states in the game. 
 
-1. Numbered
-2. List
+Ordinarily in a stochastic environment this makes sense, however in a deterministic environment with
+a state that can be represented by less than 1000 bits, this shouldn't make any sense. Learning a perfect
+model in a relatively small deterministic environment should be extremely easy, and clearly (to my mind 
+at least) does not neccessitate a giant ResNet architecture.
 
-**Bold** and _Italic_ and `Code` text
+I would love to do some digging soon and try to figure out which models to use in 1) deterministic cases
+and 2) stochastic cases.
 
-[Link](url) and ![Image](src)
-```
-
-For more details see [Basic writing and formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/jdm365/Reinforcement_Learning/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+I also would like to study and try to implement model-based meta-policy optimization at some point. -> https://arxiv.org/abs/1809.05214
