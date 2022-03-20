@@ -1,4 +1,4 @@
-from turtle import forward
+import sys
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,7 +15,7 @@ class ResidualBlock(nn.Module):
             self.residual_connection = lambda x : x
         self.block = nn.Sequential(
             nn.Conv2d(in_channels=in_featues, out_channels=out_features, kernel_size=kernel_size, padding=padding),
-            nn.BatchNorm2d(256),
+            nn.BatchNorm2d(out_features),
             nn.ReLU(),
             nn.Conv2d(in_channels=out_features, out_channels=out_features, kernel_size=kernel_size, padding=padding),
             nn.BatchNorm2d(out_features)
@@ -31,9 +31,10 @@ class Resnet(nn.Module):
         output_features: list, kernel_sizes: list, paddings: list, \
         strides: list, is_classifier=False, n_classes=None):
         super(Resnet, self).__init__()
-        output_features = deque(output_features).appendleft(in_featues)
+        output_features = deque(output_features)
+        output_features.appendleft(in_featues)
         tower = [ResidualBlock(output_features[i], output_features[i+1], kernel_sizes[i], \
-                paddings[i], strides[i]) for i in range(n_residual_blocks-1)]
+                paddings[i], strides[i]) for i in range(n_residual_blocks)]
         self.residual_tower_list = nn.ModuleList(tower)
         self.residual_tower = nn.Sequential(*self.residual_tower_list)
         self.is_classifier = is_classifier
@@ -47,8 +48,8 @@ class Resnet(nn.Module):
     def forward(self, input):
         residual_output = self.residual_tower(input)
         if self.is_classifier:
-            output = self.fc(residual_output)
-        return output
+            residual_output = self.fc(residual_output)
+        return residual_output
 
 
 
@@ -57,6 +58,7 @@ class Connect4NetworkConvolutional(nn.Module):
         super(Connect4NetworkConvolutional, self).__init__()
         self.filename = 'Trained_Models/connect4resnet'
         self.hidden_state_dims = hidden_state_dims
+        self.n_actions = n_actions
 
         self.representation_head = Resnet(
                                     input_dims, 
@@ -78,7 +80,7 @@ class Connect4NetworkConvolutional(nn.Module):
                                     strides=[1, 1, 1]
                                     )
         self.reward_predicition = nn.Sequential(
-                                    nn.Conv2d(in_channels=hidden_state_dims[0], out_channels=1),
+                                    nn.Conv2d(in_channels=hidden_state_dims[0], out_channels=1, kernel_size=1),
                                     nn.BatchNorm2d(1),
                                     nn.Tanh(),
                                     nn.Flatten(start_dim=1),
@@ -91,16 +93,16 @@ class Connect4NetworkConvolutional(nn.Module):
             nn.BatchNorm2d(1),
             nn.Tanh(),
             nn.Flatten(start_dim=1),
-            nn.Linear(input_dims[-2]*input_dims[-1], n_actions),
+            nn.Linear(hidden_state_dims[-2]*hidden_state_dims[-1], n_actions),
             nn.Softmax(dim=-1)
         )
 
         self.critic_head = nn.Sequential(
-            nn.Conv2d(in_channels=hidden_state_dims[1], out_channels=1, kernel_size=1),
+            nn.Conv2d(in_channels=hidden_state_dims[0], out_channels=1, kernel_size=1),
             nn.BatchNorm2d(1),
             nn.Tanh(),
             nn.Flatten(start_dim=1),
-            nn.Linear(input_dims[-2]*input_dims[-1], 1),
+            nn.Linear(hidden_state_dims[-2]*hidden_state_dims[-1], 1),
             nn.Tanh()
         )
 
@@ -114,14 +116,15 @@ class Connect4NetworkConvolutional(nn.Module):
 
     def roll_forward(self, hidden_state, action):
         action = self.broadcast_action(action)
-        next_hidden_state = self.dynamics_head(hidden_state, action)
+        dynamics_input = T.cat((hidden_state, action), dim=1)
+        next_hidden_state = self.dynamics_head(dynamics_input)
         reward = self.reward_predicition(next_hidden_state)
-        return next_hidden_state, reward
+        return next_hidden_state, reward[0][0]
 
     def actor_critic(self, hidden_state):
         probs = self.actor_head(hidden_state)
         vals = self.critic_head(hidden_state)
-        return probs, vals
+        return probs[0], vals[0][0]
 
     def reshape_state(self, state):
         if len(state.shape) == 2:
@@ -133,11 +136,11 @@ class Connect4NetworkConvolutional(nn.Module):
         if type(action) == int:
             action = F.one_hot(T.tensor(action), self.n_actions)
             action = action.repeat(1, 1,\
-                 self.hidden_state_dims[2]).reshape(1, 1, *self.hidden_state_dims[2:])
+                self.hidden_state_dims[1], 1).reshape(1, 1, *self.hidden_state_dims[1:])
         else:
             action = F.one_hot(action.long(), self.n_actions)
             action = action.repeat(1, 1, self.hidden_state_dims[2]).reshape(self.hidden_state_dims[0], \
-                1, *self.hidden_state_dims[2:])
+                1, *self.hidden_state_dims[1:])
         return action.to(self.device)
 
     def save_models(self):

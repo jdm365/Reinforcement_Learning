@@ -117,8 +117,8 @@ class MCTS:
             hidden_state, reward = self.network.roll_forward(parent.hidden_state, last_action)
 
             ## EXPAND
-            self.expand_node(node, probs[0], hidden_state, reward)
+            self.expand_node(node, probs, hidden_state, reward)
             self.add_exploration_noise(node)
             
             ## BACKPROPOGATE
-            self.backprop(search_path, value[0])
+            self.backprop(search_path, value)
