@@ -20,14 +20,12 @@ class Node:
 
 
 class MCTS:
-    def __init__(self, actor_critic, representation, dynamics, n_simulations, dirichlet_alpha=0.3, exploration_factor=0.25):
+    def __init__(self, network, n_simulations, dirichlet_alpha=0.3, exploration_factor=0.25):
         self.n_simulations = n_simulations
         self.discount = 0.997
         self.dirichlet_alpha = dirichlet_alpha
         self.exploration_factor = exploration_factor
-        self.actor_critic = actor_critic
-        self.representation = representation
-        self.dynamics = dynamics
+        self.network = network
 
         '''
         For sim in n_simulations do:
@@ -115,11 +113,11 @@ class MCTS:
             ## EVALUATE
             parent = search_path[-2]
             last_action = action_history[-1]
-            probs, value = self.actor_critic.forward(parent.hidden_state)
-            hidden_state, reward = self.dynamics.forward(parent.hidden_state, last_action)
+            probs, value = self.network.actor_critic(parent.hidden_state)
+            hidden_state, reward = self.network.roll_forward(parent.hidden_state, last_action)
 
             ## EXPAND
-            self.expand_node(node, probs[0], hidden_state, reward)
+            self.expand_node(node, probs, hidden_state, reward[0])
             self.add_exploration_noise(node)
             
             ## BACKPROPOGATE
