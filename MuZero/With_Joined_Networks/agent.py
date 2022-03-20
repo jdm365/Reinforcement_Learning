@@ -64,7 +64,7 @@ class Agent:
             next_hidden_states, next_rewards = \
                 self.network.roll_forward(last_hidden_states, target_actions[:, i, 0])
             hidden_states.append(next_hidden_states.to(self.network.device))
-            rewards.append(next_rewards.to(self.network.device))
+            rewards.append(next_rewards.squeeze().to(self.network.device))
             last_hidden_states = next_hidden_states
 
         probs = []

@@ -25,9 +25,9 @@ class ReplayBuffer:
 
     def get_batch(self):
         games = random.choices(self.games, k=self.batch_size)
-        state_shape = games[0][0].shape
+        state_shape = games[0][0][0].shape
 
-        states = np.zeros((self.batch_size, 1, *state_shape), dtype=T.float)
+        states = np.zeros((self.batch_size, 1, *state_shape), dtype=float)
         probs = T.zeros((self.batch_size, self.unroll_length, self.n_actions), dtype=T.float)
         rewards = T.zeros((self.batch_size, self.unroll_length, 1), dtype=T.float)
         values = T.zeros((self.batch_size, self.unroll_length, 1), dtype=T.float)

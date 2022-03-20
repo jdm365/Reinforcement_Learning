@@ -119,12 +119,12 @@ class Connect4NetworkConvolutional(nn.Module):
         dynamics_input = T.cat((hidden_state, action), dim=1)
         next_hidden_state = self.dynamics_head(dynamics_input)
         reward = self.reward_predicition(next_hidden_state)
-        return next_hidden_state, reward[0][0]
+        return next_hidden_state, reward
 
     def actor_critic(self, hidden_state):
         probs = self.actor_head(hidden_state)
         vals = self.critic_head(hidden_state)
-        return probs[0], vals[0][0]
+        return probs[0], vals
 
     def reshape_state(self, state):
         if len(state.shape) == 2:
@@ -139,7 +139,7 @@ class Connect4NetworkConvolutional(nn.Module):
                 self.hidden_state_dims[1], 1).reshape(1, 1, *self.hidden_state_dims[1:])
         else:
             action = F.one_hot(action.long(), self.n_actions)
-            action = action.repeat(1, 1, self.hidden_state_dims[2]).reshape(self.hidden_state_dims[0], \
+            action = action.repeat(1, 1, self.hidden_state_dims[1], 1).reshape(action.shape[0], \
                 1, *self.hidden_state_dims[1:])
         return action.to(self.device)
 
