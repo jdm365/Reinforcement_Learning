@@ -7,7 +7,7 @@ I decided to create a separate repository not long ago to host all of my RL work
 of time on it. 
 
 Some of the projects I have enjoyed the most thus far are creating an AlphaZero program and teaching in to play
-connect 4 and chess, and doing the same with DeepMind's newer model MuZero.
+connect 4 and chess, and doing the same with DeepMind's newer model ![MuZero](https://github.com/jdm365/Reinforcement_Learning/tree/main/MuZero).
 
 ![This is an image](AlphaZero.png)
 
