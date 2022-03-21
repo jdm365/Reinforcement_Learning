@@ -34,7 +34,7 @@ class Agent:
             hidden_state = self.network.project_to_hidden_state(state)
             self.tree_search.expand_node(root, self.game.get_valid_moves(state), \
                 hidden_state, reward)
-            self.tree_search.search(root)
+            root = self.tree_search.search(root)
             action, probs = self.tree_search.choose_action(1.0, self.game.n_actions, \
                 root)
             state = self.game.get_next_state(state, action)
@@ -118,10 +118,10 @@ class Agent:
 
             while self.game.check_terminal(state) is False:
                 root = Node(prior=0)
-                hidden_state = self.representation.forward(state)
+                hidden_state = self.network.project_to_hidden_state(state)
                 self.tree_search.expand_node(root, self.game.get_valid_moves(state), \
                     hidden_state, reward)
-                self.tree_search.search(root)
+                root = self.tree_search.search(root)
                 action, _ = self.tree_search.choose_action(temperature, self.game.n_actions, \
                     root)
                 state = self.game.get_next_state(state, action)

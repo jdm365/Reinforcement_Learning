@@ -122,3 +122,4 @@ class MCTS:
             
             ## BACKPROPOGATE
             self.backprop(search_path, value[0])
+        return root

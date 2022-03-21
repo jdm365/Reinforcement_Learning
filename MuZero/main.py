@@ -24,6 +24,6 @@ if __name__ == '__main__':
         agent.play_agent()
 
 
-    n_epochs = 1000
-    train(n_epochs=n_epochs)
-    #test()
+    n_epochs = 2500
+    ##train(n_epochs=n_epochs)
+    test()
