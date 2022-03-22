@@ -102,7 +102,7 @@ class Agent:
         game_over = False
         clicked = False
         while not game_over:
-            temperature = 0.0
+            temperature = 0.2
 
             state = self.game.init_state
             self.game.draw_board(state)
@@ -117,7 +117,7 @@ class Agent:
             reward = self.game.get_reward(state)
 
             while self.game.check_terminal(state) is False:
-                root = Node(prior=0)
+                root = Node(prior=0.1428)
                 hidden_state = self.network.project_to_hidden_state(state)
                 self.tree_search.expand_node(root, self.game.get_valid_moves(state), \
                     hidden_state, reward)
