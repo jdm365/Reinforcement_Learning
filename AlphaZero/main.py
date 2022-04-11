@@ -1,9 +1,9 @@
 from tqdm import tqdm
 from agent import Agent
-
+import sys
 
 if __name__ == '__main__':
-    agent = Agent(lr=1e-2, batch_size=256, n_simulations=800, convolutional=False)
+    agent = Agent(lr=1e-2, batch_size=256, n_simulations=400, convolutional=False)
 
     def train(n_epochs):
         for epoch in tqdm(range(n_epochs)):
@@ -20,5 +20,5 @@ if __name__ == '__main__':
 
 
     n_epochs = 5000
-    ##train(n_epochs=n_epochs)
-    test()
+    train(n_epochs=n_epochs)
+    ##test()

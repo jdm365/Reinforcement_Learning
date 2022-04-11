@@ -15,6 +15,7 @@ class Agent:
                             game.n_actions
                             )
         self.memory = ReplayBuffer(batch_size, game.n_actions)
+
         self.tree_search = MCTS(self.network, n_simulations)
         self.batch_size = batch_size
         self.game = game

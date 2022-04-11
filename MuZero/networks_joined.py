@@ -1,8 +1,8 @@
-import sys
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch2trt import TRTModule
 from collections import deque
 
 
@@ -57,6 +57,8 @@ class Connect4NetworkConvolutional(nn.Module):
     def __init__(self, lr, input_dims, hidden_state_dims, n_actions=1, n_unroll_steps=5):
         super(Connect4NetworkConvolutional, self).__init__()
         self.filename = 'Trained_Models/connect4resnet'
+        self.model_trt = TRTModule()
+
         self.hidden_state_dims = hidden_state_dims
         self.n_actions = n_actions
 
@@ -144,10 +146,12 @@ class Connect4NetworkConvolutional(nn.Module):
         return action.to(self.device)
 
     def save_models(self):
-        T.save(self.state_dict(), self.filename)
+        T.save(self.model_trt.state_dict(), self.filename)
 
     def load_models(self):
-        if T.cuda.is_available() != True:
+        if T.cuda.is_available() == False:
             self.load_state_dict(T.load(self.filename, map_location=T.device('cpu')))
             return
-        self.load_state_dict(T.load(self.filename))
+        self.model_trt.load_state_dict(T.load(self.filename))
+
+

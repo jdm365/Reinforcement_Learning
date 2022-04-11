@@ -25,7 +25,7 @@ class MCTS:
         self.discount = 0.997
         self.dirichlet_alpha = dirichlet_alpha
         self.exploration_factor = exploration_factor
-        self.network = network
+        self.network = network.load_models()
 
         '''
         For sim in n_simulations do:
