@@ -46,11 +46,12 @@ class ReplayBuffer:
         self.states_.append(state_)
         self.dones.append(1-done)
 
-        self.states = self.states[-self.max_len:]
-        self.actions = self.actions[-self.max_len:]
-        self.rewards = self.rewards[-self.max_len:]
-        self.states_ = self.states_[-self.max_len:]
-        self.dones = self.dones[-self.max_len:]
+        if len(self.states) == self.max_len:
+            self.states.pop(0)
+            self.actions.pop(0)
+            self.rewards.pop(0)
+            self.states_.pop(0)
+            self.dones.pop(0)
 
     def get_memory_batch(self):
         batch = np.random.choice(len(self.states), self.batch_size)
@@ -75,7 +76,10 @@ class ActorNetwork(nn.Module):
             nn.Linear(fc1_dims, fc2_dims),
             nn.LayerNorm(fc2_dims),
             nn.ReLU(),
-            nn.Linear(fc2_dims, n_actions),
+            nn.Linear(fc2_dims, 128),
+            nn.LayerNorm(128),
+            nn.ReLU(),
+            nn.Linear(128, n_actions),
             nn.Tanh()
         )
         self.actor_network.apply(self.init_weights)
@@ -139,7 +143,6 @@ class CriticNetwork(nn.Module):
         state_v = F.relu(self.bn2(self.fc2(x)))
 
         action_v = F.relu(self.action_value(action))
-
         state_action_v = F.relu(T.add(state_v, action_v))
         return self.q(state_action_v)
     
@@ -151,11 +154,12 @@ class CriticNetwork(nn.Module):
 
 
 class Agent:
-    def __init__(self, lr_actor, lr_critic, tau, input_dims, n_actions, gamma=0.99, fc1_dims=400, fc2_dims=300,\
-        batch_size=64, max_mem_len=50000):
+    def __init__(self, lr_actor, lr_critic, tau, input_dims, n_actions, gamma=0.99, fc1_dims=1024, fc2_dims=512,\
+        batch_size=64, max_mem_len=50000, clip_val=5.0):
         self.tau = tau
         self.batch_size = batch_size
         self.gamma = gamma
+        self.clip_val = clip_val
 
         self.actor = ActorNetwork(lr_actor, input_dims, fc1_dims, fc2_dims, n_actions, name='Actor')
         self.critic = CriticNetwork(lr_critic, input_dims, fc1_dims, fc2_dims, n_actions, name='Critic')
@@ -173,6 +177,7 @@ class Agent:
         observation = T.tensor(observation, dtype=T.float).to(self.actor.device)
         mu = self.actor.forward(observation).to(self.actor.device)
         mu_prime = mu + T.tensor(self.noise(), dtype=T.float).to(self.actor.device)
+        mu_prime = T.clamp(mu_prime, -1, 1)
         self.actor.train()
         return mu_prime.cpu().detach().numpy()
 
@@ -193,7 +198,7 @@ class Agent:
         self.target_actor.eval()
         self.target_critic.eval()
         self.critic.eval()
-        target_actions = self.target_actor.forward(states_)
+        target_actions = self.target_actor.forward(states_).clamp(-1, 1)
         critic_value_ = self.target_critic.forward(states_, target_actions)
         critic_value = self.critic.forward(states, actions)
         
@@ -204,9 +209,9 @@ class Agent:
         target = target.view(self.batch_size, 1)
 
         self.critic.train()
-        critic_loss = nn.MSELoss()
         self.critic.optimizer.zero_grad()
-        critic_loss(target, critic_value).backward()
+        critic_loss = T.clamp(F.mse_loss(target, critic_value), -self.clip_val, self.clip_val).to(self.critic.device)
+        critic_loss.backward()
         self.critic.optimizer.step()
 
         self.critic.eval()
@@ -226,6 +231,7 @@ class Agent:
         
         for target_param, param in zip(self.target_critic.parameters(), self.critic.parameters()):
             target_param.data.copy_(tau * param.data + (1-tau) * target_param.data)
+
 
     def save_models(self):
         print('...Saving Models...')

@@ -4,7 +4,7 @@ from utils import plot_learning
 from ddpg import Agent
 
 env = gym.make('LunarLanderContinuous-v2')
-agent = Agent(lr_actor=1e-4, lr_critic=1e-3, tau=1e-3, input_dims=env.observation_space.shape, \
+agent = Agent(lr_actor=3e-5, lr_critic=3e-4, tau=1e-3, input_dims=env.observation_space.shape, \
     n_actions=env.action_space.shape[0])
 n_episodes = 2500
 filename = 'LunarLander_DDPG'
