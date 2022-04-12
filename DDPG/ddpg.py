@@ -76,10 +76,7 @@ class ActorNetwork(nn.Module):
             nn.Linear(fc1_dims, fc2_dims),
             nn.LayerNorm(fc2_dims),
             nn.ReLU(),
-            nn.Linear(fc2_dims, 128),
-            nn.LayerNorm(128),
-            nn.ReLU(),
-            nn.Linear(128, n_actions),
+            nn.Linear(fc2_dims, n_actions),
             nn.Tanh()
         )
         self.actor_network.apply(self.init_weights)
@@ -139,8 +136,8 @@ class CriticNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, state, action):
-        x = F.relu(self.bn1(self.fc1(state)))
-        state_v = F.relu(self.bn2(self.fc2(x)))
+        x = F.relu(self.fc1(state))
+        state_v = F.relu(self.fc2(x))
 
         action_v = F.relu(self.action_value(action))
         state_action_v = F.relu(T.add(state_v, action_v))
@@ -154,12 +151,12 @@ class CriticNetwork(nn.Module):
 
 
 class Agent:
-    def __init__(self, lr_actor, lr_critic, tau, input_dims, n_actions, gamma=0.99, fc1_dims=1024, fc2_dims=512,\
-        batch_size=64, max_mem_len=50000, clip_val=5.0):
+    def __init__(self, lr_actor, lr_critic, tau, input_dims, n_actions, gamma=0.99, fc1_dims=256, fc2_dims=256,\
+        batch_size=256, max_mem_len=50000, clip_val=5.0):
         self.tau = tau
         self.batch_size = batch_size
         self.gamma = gamma
-        self.clip_val = clip_val
+        self.clip_val = np.inf#clip_val
 
         self.actor = ActorNetwork(lr_actor, input_dims, fc1_dims, fc2_dims, n_actions, name='Actor')
         self.critic = CriticNetwork(lr_critic, input_dims, fc1_dims, fc2_dims, n_actions, name='Critic')
@@ -177,7 +174,6 @@ class Agent:
         observation = T.tensor(observation, dtype=T.float).to(self.actor.device)
         mu = self.actor.forward(observation).to(self.actor.device)
         mu_prime = mu + T.tensor(self.noise(), dtype=T.float).to(self.actor.device)
-        mu_prime = T.clamp(mu_prime, -1, 1)
         self.actor.train()
         return mu_prime.cpu().detach().numpy()
 
@@ -198,7 +194,7 @@ class Agent:
         self.target_actor.eval()
         self.target_critic.eval()
         self.critic.eval()
-        target_actions = self.target_actor.forward(states_).clamp(-1, 1)
+        target_actions = self.target_actor.forward(states_)
         critic_value_ = self.target_critic.forward(states_, target_actions)
         critic_value = self.critic.forward(states, actions)
         
@@ -212,12 +208,16 @@ class Agent:
         self.critic.optimizer.zero_grad()
         critic_loss = T.clamp(F.mse_loss(target, critic_value), -self.clip_val, self.clip_val).to(self.critic.device)
         critic_loss.backward()
+        #nn.utils.clip_grad_norm_(self.critic.parameters(), 1e-2)
         self.critic.optimizer.step()
 
         self.critic.eval()
+        self.actor.eval()
         actor_loss = -self.critic.forward(states, self.actor.forward(states)).mean()
+        self.actor.train()
         self.actor.optimizer.zero_grad()
         actor_loss.backward()
+        #nn.utils.clip_grad_norm_(self.actor.parameters(), 1e-2)
         self.actor.optimizer.step()
 
         self.update_target_networks()
@@ -226,11 +226,21 @@ class Agent:
         if tau is None:
             tau = self.tau
 
-        for target_param, param in zip(self.target_actor.parameters(), self.actor.parameters()):
-            target_param.data.copy_(tau * param.data + (1-tau) * target_param.data)
+        target_actor_dict = self.actor.state_dict()
+        target_critic_dict = self.critic.state_dict()
+        #orig = []
+        for name, param in self.actor.state_dict().items():
+            #orig.append(param)
+            target_actor_dict[name] = tau * param + (1-tau) * target_actor_dict[name].clone()
         
-        for target_param, param in zip(self.target_critic.parameters(), self.critic.parameters()):
-            target_param.data.copy_(tau * param.data + (1-tau) * target_param.data)
+        for name, param in self.critic.state_dict().items():
+            target_critic_dict[name] = tau * param + (1-tau) * target_critic_dict[name].clone()
+
+        self.target_actor.load_state_dict(target_actor_dict)
+        self.target_critic.load_state_dict(target_critic_dict)
+
+        #for original, new in zip(orig, self.target_actor.parameters()):
+            #print(T.equal(new, original))
 
 
     def save_models(self):
