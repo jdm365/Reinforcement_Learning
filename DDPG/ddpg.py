@@ -81,7 +81,7 @@ class ActorNetwork(nn.Module):
         )
         self.actor_network.apply(self.init_weights)
 
-        self.optimizer = optim.Adam(self.parameters(), lr=lr, weight_decay=0.01)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
@@ -131,13 +131,13 @@ class CriticNetwork(nn.Module):
         T.nn.init.uniform_(self.q.weight.data, -f4, f4)
         T.nn.init.uniform_(self.q.bias.data, -f4, f4)
 
-        self.optimizer = optim.Adam(self.parameters(), lr=lr, weight_decay=0.01)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
     def forward(self, state, action):
-        x = F.relu(self.fc1(state))
-        state_v = F.relu(self.fc2(x))
+        x = F.relu(self.bn1(self.fc1(state)))
+        state_v = F.relu(self.bn2(self.fc2(x)))
 
         action_v = F.relu(self.action_value(action))
         state_action_v = F.relu(T.add(state_v, action_v))
@@ -151,12 +151,11 @@ class CriticNetwork(nn.Module):
 
 
 class Agent:
-    def __init__(self, lr_actor, lr_critic, tau, input_dims, n_actions, gamma=0.99, fc1_dims=256, fc2_dims=256,\
-        batch_size=256, max_mem_len=50000, clip_val=5.0):
+    def __init__(self, lr_actor, lr_critic, tau, input_dims, n_actions, fc1_dims, \
+        fc2_dims, gamma=0.99, batch_size=256, max_mem_len=50000):
         self.tau = tau
         self.batch_size = batch_size
         self.gamma = gamma
-        self.clip_val = np.inf#clip_val
 
         self.actor = ActorNetwork(lr_actor, input_dims, fc1_dims, fc2_dims, n_actions, name='Actor')
         self.critic = CriticNetwork(lr_critic, input_dims, fc1_dims, fc2_dims, n_actions, name='Critic')
@@ -206,16 +205,16 @@ class Agent:
 
         self.critic.train()
         self.critic.optimizer.zero_grad()
-        critic_loss = T.clamp(F.mse_loss(target, critic_value), -self.clip_val, self.clip_val).to(self.critic.device)
+        critic_loss = F.mse_loss(target, critic_value).to(self.critic.device)
         critic_loss.backward()
         #nn.utils.clip_grad_norm_(self.critic.parameters(), 1e-2)
         self.critic.optimizer.step()
 
         self.critic.eval()
-        self.actor.eval()
+        self.actor.optimizer.zero_grad()
         actor_loss = -self.critic.forward(states, self.actor.forward(states)).mean()
         self.actor.train()
-        self.actor.optimizer.zero_grad()
+        
         actor_loss.backward()
         #nn.utils.clip_grad_norm_(self.actor.parameters(), 1e-2)
         self.actor.optimizer.step()
@@ -228,19 +227,24 @@ class Agent:
 
         target_actor_dict = self.actor.state_dict()
         target_critic_dict = self.critic.state_dict()
-        #orig = []
+        orig = []
+        orig_2 = []
         for name, param in self.actor.state_dict().items():
-            #orig.append(param)
-            target_actor_dict[name] = tau * param + (1-tau) * target_actor_dict[name].clone()
+            orig.append(param)
+            target_actor_dict[name] = tau * param.data + (1-tau) * target_actor_dict[name].clone()
         
         for name, param in self.critic.state_dict().items():
-            target_critic_dict[name] = tau * param + (1-tau) * target_critic_dict[name].clone()
+            orig_2.append(param)
+            target_critic_dict[name] = tau * param.data + (1-tau) * target_critic_dict[name].clone()
 
         self.target_actor.load_state_dict(target_actor_dict)
         self.target_critic.load_state_dict(target_critic_dict)
 
         #for original, new in zip(orig, self.target_actor.parameters()):
-            #print(T.equal(new, original))
+        #    print(T.equal(new, original))
+        #
+        #for original, new in zip(orig_2, self.target_critic.parameters()):
+        #    print(T.equal(new, original))
 
 
     def save_models(self):
