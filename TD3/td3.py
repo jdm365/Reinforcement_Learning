@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
+from priorized_experience_replay import PrioritizedReplayBuffer
 from random import sample
 import sys
 
@@ -128,7 +129,7 @@ class CriticNetwork(nn.Module):
 
 class Agent:
     def __init__(self, lr_actor, lr_critics, tau, input_dims, n_actions, fc1_dims, \
-        fc2_dims, env, gamma=0.99, batch_size=256, max_mem_len=50000, learn_freq=4):
+        fc2_dims, env, gamma=0.99, batch_size=128, max_mem_len=50000, learn_freq=2):
         self.tau = tau
         self.batch_size = batch_size
         self.gamma = gamma
@@ -151,7 +152,8 @@ class Agent:
         self.target_critic_2 = CriticNetwork(lr_critics, input_dims, fc1_dims, fc2_dims, \
             n_actions, name='target_critic_2')
 
-        self.memory = ReplayBuffer(max_len=max_mem_len, batch_size=batch_size)
+        #self.memory = ReplayBuffer(max_len=max_mem_len, batch_size=batch_size)
+        self.memory = PrioritizedReplayBuffer(max_len=max_mem_len, batch_size=batch_size)
 
         self.noise = OUActionNoise(mu=np.zeros(n_actions))
 
@@ -170,15 +172,22 @@ class Agent:
 
     def choose_action(self, observation):
         self.actor.eval()
+        self.critic_1.eval()
         observation = T.tensor(observation, dtype=T.float).to(self.actor.device)
         mu = self.actor.forward(observation).to(self.actor.device)
         mu_prime = mu + T.tensor(self.noise(), dtype=T.float).to(self.actor.device)
+
+        q_val_1 = self.critic_1.forward(observation, mu_prime)
+        q_val_2 = self.critic_2.forward(observation, mu_prime)
+        q_val = T.min(q_val_1, q_val_2)
+
         mu_prime = self.norm_action(mu_prime.cpu().detach().numpy())
         self.actor.train()
-        return mu_prime
+        self.critic_1.train()
+        return mu_prime, q_val
 
-    def store_memory(self, state, action, reward, state_, done):
-        return self.memory.store_memory(state, action, reward, state_, done)
+    def store_memory(self, state, action, reward, state_, done, td=None):
+        return self.memory.store_memory(state, action, reward, state_, done, td)
 
     def learn(self):
         if len(self.memory.states) < self.batch_size:
