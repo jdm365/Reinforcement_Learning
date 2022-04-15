@@ -139,7 +139,7 @@ class Connect4:
                     )
         if winner is not None:
             myfont = pygame.font.SysFont("monospace", 40)
-            label = myfont.render(winner, 1, blue)
+            label = myfont.render(winner, 1, yellow)
             screen.blit(label, (40,10))
             pygame.display.update()
             pygame.time.wait(3000)

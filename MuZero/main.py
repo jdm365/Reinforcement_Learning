@@ -25,5 +25,5 @@ if __name__ == '__main__':
 
 
     n_epochs = 2500
-    ##train(n_epochs=n_epochs)
-    test()
+    train(n_epochs=n_epochs)
+    ##test()
