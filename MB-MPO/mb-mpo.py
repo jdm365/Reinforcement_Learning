@@ -159,7 +159,7 @@ class CriticNetwork(nn.Module):
 
 class Agent:
     def __init__(self, lr_dynamics, lr_inner, lr_outer, env, n_models, 
-                    fc1_dims, fc2_dims, n_steps, n_epochs):
+                    fc1_dims, fc2_dims, n_steps):
         self.obs_dims = env.observation_space.shape
         self.act_dims = env.action_space.n
         self.dynamics = DynamicsModel(lr_dynamics, *self.obs_dims, len([self.act_dims]), 
@@ -175,7 +175,7 @@ class Agent:
         self.gae_lambda = 0.95
         self.eta = 0.20
         self.n_updates = 2
-        self.n_epochs = n_epochs
+        self.scores = []
 
     def choose_action(self, observation, real_env=False):
         if real_env:
@@ -202,7 +202,10 @@ class Agent:
             score += rew
             if done:
                 obs = self.env.reset()
-        print(f'Total reward in {self.transition_bank.n_steps} steps: {score}')
+                self.scores.append(score)
+                score = 0
+        return np.mean(self.scores[-100:])
+
 
     def train_dynamics(self):
         obs, act, rew, obs_, dones = self.transition_bank.get_real_data()
@@ -304,20 +307,21 @@ class Agent:
 
 
     def run(self):
-        for epoch in range(self.n_epochs):
-            self.sample_real_env()
+        while mean < 175:
+            mean = self.sample_real_env()
             self.train_dynamics()
             self.actor_inner.load_state_dict(self.actor.state_dict())
             self.sample_imaginary_env()
             self.update_inner()
             self.sample_imaginary_env(after_update=True)
             self.update_outer()
-            print(f'Epoch: {epoch}')
+            print(f'Mean score: {np.mean(self.scores[-10:])}')
+
 
 
 if __name__ == '__main__':
     env = gym.make('LunarLander-v2')
     agent = Agent(lr_dynamics=1e-3, lr_inner=1e-3, lr_outer=1e-4, 
                     env=env, n_models=1, fc1_dims=256, fc2_dims=256,
-                    n_steps=2500, n_epochs=250)
+                    n_steps=2500)
     agent.run()
