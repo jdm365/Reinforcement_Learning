@@ -322,7 +322,7 @@ class Agent:
             for name in self.names:
                 self.sample_imaginary_env(name, name)
                 self.update_outer(name)
-            print(f'Score running mean: {np.mean[self.scores[-25:]]} \t\t Epoch: {epoch}')
+            print(f'Score running mean: {np.mean(self.scores[-25:])} \t\t Epoch: {epoch}')
 
 
 
