@@ -307,6 +307,7 @@ class Agent:
 
 
     def run(self):
+        mean = 0
         while mean < 175:
             mean = self.sample_real_env()
             self.train_dynamics()
