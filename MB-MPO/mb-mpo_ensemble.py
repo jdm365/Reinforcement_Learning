@@ -1,3 +1,4 @@
+from fileinput import filename
 import gym
 import torch as T
 import torch.nn as nn
@@ -38,6 +39,7 @@ class RealMemory:
 class ImaginaryMemory:
     def __init__(self, n_steps=100, batch_size=64, name=None):
         self.n_steps = n_steps
+        self.n_steps_inner = 1000
         self.batch_size = batch_size
 
         self.observations = []
@@ -124,11 +126,11 @@ class ActorNetwork(nn.Module):
         super(ActorNetwork, self).__init__()
 
         self.actor_network = nn.Sequential(
-            nn.Linear(input_dims, fc1_dims),
-            nn.ReLU(),
-            nn.Linear(fc1_dims, fc2_dims),
-            nn.ReLU(),
-            nn.Linear(fc2_dims, n_actions),
+            nn.Linear(input_dims, 32),
+            nn.Tanh(),
+            nn.Linear(32, 32),
+            nn.Tanh(),
+            nn.Linear(32, n_actions),
             nn.Softmax(dim=-1)
         )
 
@@ -226,7 +228,7 @@ class Agent:
     def sample_imaginary_env(self, actor_name, model_name):
         obs = self.envs['0'].reset()
         val = None
-        for _ in range(self.memories['0'].n_steps):
+        for _ in range(self.memories['0'].n_steps_inner):
             act = self.choose_action(obs, actor_name, actor_name)
             obs_, rew, done = self.dynamics[model_name].forward(obs, act)
             obs_ = obs_.detach().numpy()
@@ -311,24 +313,30 @@ class Agent:
 
     def run(self):
         epoch = 0
-        while True:
+        mean = 0
+        while mean < 175:
             epoch += 1
-            for name in self.names:
-                self.sample_real_env(name)
-                self.train_dynamics(name)
+            for _ in range(20):
+                for name in self.names:
+                    self.sample_real_env(name)
+                    self.train_dynamics(name)
             for name in self.names:
                 self.sample_imaginary_env(name, name)
                 self.update_inner(name)
             for name in self.names:
                 self.sample_imaginary_env(name, name)
                 self.update_outer(name)
-            print(f'Score running mean: {np.mean(self.scores[-25:])} \t\t Epoch: {epoch}')
+            mean = int(np.mean(self.scores[-25:]))
+            print(f'Score running mean: {mean} \t Epoch: {epoch}')
+        return self.actors['Global'].state_dict()
 
 
 
 if __name__ == '__main__':
     env = gym.make('LunarLander-v2')
+    filename = 'actor_params'
     agent = Agent(lr_dynamics=1e-3, lr_inner=1e-3, lr_outer=1e-4, 
                     env=env, n_models=8, fc1_dims=256, fc2_dims=256,
                     n_steps=1000)
-    agent.run()
+    optimal_preupdate_params = agent.run()
+    T.save(optimal_preupdate_params, 'Trained_Models/' + filename)
