@@ -5,7 +5,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions import Categorical
 import numpy as np
-from tqdm import tqdm
+import torch.multiprocessing as mp
 
 class Memory:
     def __init__(self, n_steps=100, batch_size=64):
@@ -90,7 +90,7 @@ class Memory:
 
 
 class DynamicsModel(nn.Module):
-    def __init__(self, lr, obs_dims, act_dims, fc1_dims, fc2_dims):
+    def __init__(self, lr, obs_dims, act_dims, fc1_dims, fc2_dims, name=None):
         super(DynamicsModel, self).__init__()
         self.model = nn.Sequential(
             nn.Linear(obs_dims+act_dims, fc1_dims),
@@ -117,7 +117,7 @@ class DynamicsModel(nn.Module):
         return obs_, rew, done.long()
 
 class ActorNetwork(nn.Module):
-    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions):
+    def __init__(self, lr, input_dims, fc1_dims, fc2_dims, n_actions, name=None):
         super(ActorNetwork, self).__init__()
 
         self.actor_network = nn.Sequential(
@@ -157,18 +157,22 @@ class CriticNetwork(nn.Module):
         obs = T.tensor(observation, dtype=T.float).to(self.device)
         return self.critic_network(obs)
 
-class Agent:
+class Agent(mp.Process):
     def __init__(self, lr_dynamics, lr_inner, lr_outer, env, n_models, 
                     fc1_dims, fc2_dims, n_steps):
         self.obs_dims = env.observation_space.shape
         self.act_dims = env.action_space.n
-        self.dynamics = DynamicsModel(lr_dynamics, *self.obs_dims, len([self.act_dims]), 
-                                      fc1_dims, fc2_dims)
+        #self.dynamics = DynamicsModel(lr_dynamics, *self.obs_dims, len([self.act_dims]), 
+                                      #fc1_dims, fc2_dims)
+        self.dynamics = [DynamicsModel(lr_dynamics, *self.obs_dims, len([self.act_dims]), 
+                                      fc1_dims, fc2_dims, i) for i in range(n_models)]
         self.actor = ActorNetwork(lr_outer, *self.obs_dims, fc1_dims, \
                                     fc2_dims, self.act_dims)
         self.critic = CriticNetwork(lr_outer, *self.obs_dims, fc1_dims, fc2_dims)
-        self.actor_inner = ActorNetwork(lr_inner, *self.obs_dims, fc1_dims, \
-                                        fc2_dims, self.act_dims)
+        #self.actor_inner = ActorNetwork(lr_inner, *self.obs_dims, fc1_dims, \
+                                        #fc2_dims, self.act_dims)
+        self.actor_inner = [ActorNetwork(lr_inner, *self.obs_dims, fc1_dims, \
+                                        fc2_dims, self.act_dims, i) for i in range(n_models)]                         
         self.transition_bank = Memory(n_steps)
         self.env = env
         self.gamma = 0.99
@@ -176,6 +180,7 @@ class Agent:
         self.eta = 0.20
         self.n_updates = 2
         self.scores = []
+        self.n_models = []
 
     def choose_action(self, observation, real_env=False):
         if real_env:
@@ -297,7 +302,7 @@ class Agent:
                 #    return
                 actor_loss = -T.min(probs_ratio * advantages[batch], clamped_ratio * advantages[batch]).mean()
                 critic_loss = T.mean((advantages[batch] + (values[batch] - new_vals.squeeze())).pow(2))
-                total_loss = actor_loss + 0.5 * critic_loss
+                total_loss = (actor_loss + 0.5 * critic_loss) / self.n_models
 
                 self.actor.optimizer.zero_grad()
                 self.critic.optimizer.zero_grad()
@@ -311,7 +316,7 @@ class Agent:
         while mean < 175:
             mean = self.sample_real_env()
             self.train_dynamics()
-            self.actor_inner.load_state_dict(self.actor.state_dict())
+            #self.actor_inner.load_state_dict(self.actor.state_dict())
             self.sample_imaginary_env()
             self.update_inner()
             self.sample_imaginary_env(after_update=True)
