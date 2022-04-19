@@ -6,18 +6,10 @@ to a larger extent independent work I have embarked on for fun.
 I decided to create a separate repository not long ago to host all of my RL work as I spend the greatest amount
 of time on it. 
 
-Some of the projects I have enjoyed the most thus far are 1) creating an 
+The  the projects I have enjoyed the most thus far are reating an 
 [AlphaZero](https://github.com/jdm365/Reinforcement_Learning/tree/main/AlphaZero) program and teaching in to play
 connect 4 and chess, and 2) doing the same with DeepMind's newer model 
 [MuZero](https://github.com/jdm365/Reinforcement_Learning/tree/main/MuZero).
-
-I also have been working on meta-learning and working with ensemble models.
-[model-based meta-policy optimization](https://arxiv.org/abs/1809.05214) 
-
-Incidentally I believe that models such as A3C (Asynchronous advantage actor-critc) should not be viewed as a 
-reinforcement algorithm itself. It effectively sidesteps the explore-exploit dilemna to a degree by collecting
-trajectories from multiple actors. This can be used to drastically improve the performance of any RL algorithm and
-I believe shouldn't be used to judge its robustness.
 
 ![AlphaZero](AlphaZero.png)
 
@@ -28,6 +20,16 @@ by DeepMind and others.
 [Vision Transformer Paper](https://arxiv.org/abs/2010.11929)
 
 I plan to continue this work in the future and keep learning and experimenting with cool new ideas.
+
+### Meta-Learning Models
+
+I also have been working on meta-learning and working with ensemble models.
+[model-based meta-policy optimization](https://arxiv.org/abs/1809.05214) 
+
+Incidentally I believe that models such as A3C (Asynchronous advantage actor-critc) should not be viewed as a 
+reinforcement algorithm itself. It effectively sidesteps the explore-exploit dilemna to a degree by collecting
+trajectories from multiple actors. This can be used to drastically improve the performance of any RL algorithm and
+I believe shouldn't be used to judge its robustness.
 
 ### Future Areas of Study
 
