@@ -10,8 +10,9 @@ Some of the projects I have enjoyed the most thus far are creating an
 [AlphaZero](https://github.com/jdm365/Reinforcement_Learning/tree/main/AlphaZero) program and teaching in to play
 connect 4 and chess, and doing the same with DeepMind's newer model 
 [MuZero](https://github.com/jdm365/Reinforcement_Learning/tree/main/MuZero).
+[model-based meta-policy optimization](https://arxiv.org/abs/1809.05214) 
 
-![This is an image](AlphaZero.png)
+![AlphaZero](AlphaZero.png)
 
 I made some adaptations for the AlphaZero implementation to attempt to train faster (and hopefully better)
 by using a vision-esque transformer network structure rather than the standard ResNet architecture employed
@@ -35,5 +36,3 @@ at least) does not neccessitate a giant ResNet architecture.
 
 I would love to do some digging soon and try to figure out which models to use in 1) deterministic cases
 and 2) stochastic cases.
-
-I also would like to study and try to implement [model-based meta-policy optimization](https://arxiv.org/abs/1809.05214) at some point. 
