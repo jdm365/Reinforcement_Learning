@@ -6,20 +6,25 @@ to a larger extent independent work I have embarked on for fun.
 I decided to create a separate repository not long ago to host all of my RL work as I spend the greatest amount
 of time on it. 
 
-The  the projects I have enjoyed the most thus far are reating an 
+The largest projects I have worked on and I think the ones I have enjoyed the most are building an 
 [AlphaZero](https://github.com/jdm365/Reinforcement_Learning/tree/main/AlphaZero) program and teaching in to play
-connect 4 and chess, and 2) doing the same with DeepMind's newer model 
+connect 4 and chess, and doing the same with DeepMind's newer model 
 [MuZero](https://github.com/jdm365/Reinforcement_Learning/tree/main/MuZero).
 
 ![AlphaZero](AlphaZero.png)
 
 I made some adaptations for the AlphaZero implementation to attempt to train faster (and hopefully better)
 by using a vision-esque transformer network structure rather than the standard ResNet architecture employed
-by DeepMind and others.
+by DeepMind and others. 
 
 [Vision Transformer Paper](https://arxiv.org/abs/2010.11929)
 
-I plan to continue this work in the future and keep learning and experimenting with cool new ideas.
+Even with these models, successfully learning games like chess and go proved relatively intractible to someone
+like me. For reference, Deep Mind used 5000 first generation TPU's to generate self play games, and 64 second
+generation TPU's to train their networks. I do have a RTX 3080 ti, which while powerful for me would take over 50 
+years to compute what Deepmind did in 9 hours. 
+
+Regardless it was a fun learning experience and the model was able to defeat me in Connect 4!
 
 ### Meta-Learning Models
 
@@ -45,3 +50,9 @@ at least) does not neccessitate a giant ResNet architecture.
 
 I would love to do some digging soon and try to figure out which models to use in 1) deterministic cases
 and 2) stochastic cases.
+
+I also would like to explore the concept of [intrinsic curiosity](https://arxiv.org/pdf/1705.05363.pdf).
+I have read the paper and think that having an agent which at any time at any space in the environment
+know how and when to explore is crucial and that this method of exploration is fascinating. I think this will
+prove to be the ripest area of RL in the future and that measuring performance on games like Mario will
+become the leading benchmarks.
