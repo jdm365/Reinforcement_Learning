@@ -6,6 +6,7 @@ to a larger extent independent work I have embarked on for fun.
 I decided to create a separate repository not long ago to host all of my RL work as I spend the greatest amount
 of time on it. 
 
+### Self-play / Planning Models
 The largest projects I have worked on and I think the ones I have enjoyed the most are building an 
 [AlphaZero](https://github.com/jdm365/Reinforcement_Learning/tree/main/AlphaZero) program and teaching in to play
 connect 4 and chess, and doing the same with DeepMind's newer model 
