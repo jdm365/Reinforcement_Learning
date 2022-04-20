@@ -22,7 +22,7 @@ class ActorCriticNetwork(nn.Module):
             self.actor_head = self.network.actor_head
             self.critic_head = self.network.critic_head
         else:
-            self.transformer = Connect4NetworkTransformer(input_dims, n_actions, n_encoder_blocks=2)
+            self.transformer = Connect4NetworkTransformer(input_dims, n_actions, n_encoder_blocks=4)
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr, weight_decay=1e-5)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')

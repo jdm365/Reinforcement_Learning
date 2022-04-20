@@ -1,11 +1,13 @@
-from fileinput import filename
 import gym
+from py import process
 import torch as T
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions import Categorical
+import torch.multiprocessing as mp
 import numpy as np
+from tqdm import tqdm
 
 class RealMemory:
     def __init__(self, n_steps=100, batch_size=64, name=None):
@@ -211,6 +213,7 @@ class Agent:
                 obs = self.envs[actor_name].reset()
                 self.scores.append(score)
                 score=0
+        print(np.mean(self.scores))
 
     def train_dynamics(self, model_name):
         obs, act, rew, obs_, dones = self.memories['Real'].get_data()
@@ -309,25 +312,66 @@ class Agent:
                 total_loss.backward()
                 self.actors['Global'].optimizer.step()
                 self.critic_global.optimizer.step()
+    
+    def outer(self, name):
+        self.sample_real_env(name)
+        self.train_dynamics(name)
 
+    def inner_1(self, name):
+        self.sample_imaginary_env(name, name)
+        self.update_inner(name)
 
-    def run(self):
+    def inner_2(self, name):
+        self.sample_imaginary_env(name, name)
+        self.update_outer(name)
+
+    def test(self, name):
+        self.sample_real_env(name)
+        self.train_dynamics(name)
+        self.sample_imaginary_env(name, name)
+        self.update_inner(name)
+        self.sample_imaginary_env(name, name)
+        self.update_outer(name)
+
+    def test_2(self):
         epoch = 0
         mean = 0
         while mean < 175:
             epoch += 1
-            for _ in range(20):
-                for name in self.names:
-                    self.sample_real_env(name)
-                    self.train_dynamics(name)
-            for name in self.names:
-                self.sample_imaginary_env(name, name)
-                self.update_inner(name)
-            for name in self.names:
-                self.sample_imaginary_env(name, name)
-                self.update_outer(name)
+            processes = [mp.Process(target=self.test, args=name) for name in self.names]
+            [p.start() for p in processes]
+            [p.join() for p in processes]
             mean = int(np.mean(self.scores[-25:]))
             print(f'Score running mean: {mean} \t Epoch: {epoch}')
+
+    def train(self):
+        epoch = 0
+        mean = 0
+        while mean < 175:
+            epoch += 1
+            for _ in tqdm(range(8)):
+                processes = [mp.Process(target=self.outer, args=name) for name in self.names]
+                [p.start() for p in processes]
+                [p.join() for p in processes]
+                #for name in self.names:
+                #    self.sample_real_env(name)
+                #    self.train_dynamics(name)
+            
+            processes_1 = [mp.Process(target=self.inner_1, args=name) for name in self.names]
+            [p.start() for p in processes_1]
+            [p.join() for p in processes_1]
+            #for name in tqdm(self.names):
+                #self.sample_imaginary_env(name, name)
+                #self.update_inner(name)
+            processes_2 = [mp.Process(target=self.inner_2, args=name) for name in self.names]
+            [p.start() for p in processes_2]
+            [p.join() for p in processes_2]
+
+            #for name in self.names:
+                #self.sample_imaginary_env(name, name)
+                #self.update_outer(name)
+            #mean = int(np.mean(self.scores[-25:]))
+            #print(f'Score running mean: {mean} \t Epoch: {epoch}')
         return self.actors['Global'].state_dict()
 
 
@@ -336,7 +380,8 @@ if __name__ == '__main__':
     env = gym.make('LunarLander-v2')
     filename = 'actor_params'
     agent = Agent(lr_dynamics=1e-3, lr_inner=1e-3, lr_outer=1e-4, 
-                    env=env, n_models=8, fc1_dims=256, fc2_dims=256,
+                    env=env, n_models=2, fc1_dims=256, fc2_dims=256,
                     n_steps=1000)
-    optimal_preupdate_params = agent.run()
+    optimal_preupdate_params = agent.train()
+    #agent.test_2()
     T.save(optimal_preupdate_params, 'Trained_Models/' + filename)

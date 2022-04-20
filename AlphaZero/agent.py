@@ -1,5 +1,5 @@
 import numpy as np
-from torch2trt import torch2trt
+#from torch2trt import torch2trt
 import torch as T
 from replay_buffer import ReplayBuffer
 from networks import ActorCriticNetwork
@@ -13,9 +13,9 @@ class Agent:
         self.actor_critic = ActorCriticNetwork(lr, game.init_state.shape, game.columns, convolutional)
 
         model = self.actor_critic.eval().to(self.actor_critic.device)
-        example_input = T.ones(game.init_state.shape).to(self.actor_critic.device)
-        model_trt = torch2trt(model, [example_input])
-        self.tree_search = MCTS(model_trt, n_simulations, game)
+        #example_input = T.ones(game.init_state.shape).to(self.actor_critic.device)
+        #model_trt = torch2trt(model, [example_input])
+        self.tree_search = MCTS(model, n_simulations, game)
         self.memory = ReplayBuffer(batch_size)
         self.batch_size = batch_size
         self.game = game
