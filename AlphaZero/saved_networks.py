@@ -85,7 +85,6 @@ class Connect4NetworkConvolutional(nn.Module):
 
 
 ## Baseline vison-esque transformer network
-
 class PositionalEncoding(nn.Module):
     def __init__(self, input_dims, encoding_dims=768, first_block=False):
         super(PositionalEncoding, self).__init__()
@@ -98,11 +97,16 @@ class PositionalEncoding(nn.Module):
             stride=(2, 3),
             padding=(0, 1)
             )
-        patch_dims = (input_dims[-2] - 2 - 1) * (input_dims[-1] - 3 - 1)
+        self.encodings = nn.Conv2d(
+            in_channels=1,
+            out_channels=encoding_dims,
+            kernel_size=(1, 1),
+            )
+        patch_dims = (input_dims[-2] - self.encodings.kernel_size[0] + 1) \
+                   * (input_dims[-1] - self.encodings.kernel_size[1] + 1)
         if first_block:
             self.cls_token = nn.Parameter(T.zeros(1, 1, encoding_dims))
-            self.pos_embed = nn.Parameter(T.zeros(1, 1 + patch_dims, \
-                encoding_dims))
+            self.pos_embed = nn.Parameter(T.zeros(1, 1 + patch_dims, encoding_dims))
         self.dropout = nn.Dropout(p=.2)
 
     def forward(self, inputs):
@@ -168,8 +172,13 @@ class MultiHeadedAttention(nn.Module):
 
 
 class TransformerEncoder(nn.Module):
-    def __init__(self, input_dims, encoding_dims, n_heads, \
-        first_block=False):
+    def __init__(
+            self, 
+            input_dims, 
+            encoding_dims, 
+            n_heads, 
+            first_block=False,
+            ):
         super(TransformerEncoder, self).__init__()
         self.multi_headed_attention = MultiHeadedAttention(
             input_dims,
@@ -208,29 +217,39 @@ class TransformerNetwork(nn.Module):
                 first_block=True)] + \
             [TransformerEncoder(input_dims, encoding_dims, n_heads) \
                 for _ in range(n_encoder_blocks-1)]
-        )
+            )
         self.network = nn.Sequential(
             *self.encoder_blocks,
-            nn.LayerNorm(encoding_dims)
-        )
+            nn.LayerNorm(encoding_dims),
+            )
 
 
 class Connect4NetworkTransformer(nn.Module):
-    def __init__(self, input_dims, n_actions, encoding_dims=768, n_heads=12, \
-        n_encoder_blocks=4):
+    def __init__(
+            self, 
+            input_dims, 
+            n_actions, 
+            encoding_dims=128, 
+            n_heads=8,
+            n_encoder_blocks=4,
+            ):
         super(Connect4NetworkTransformer, self).__init__()
-        transformer = TransformerNetwork(input_dims, encoding_dims, n_heads, \
-            n_encoder_blocks)
+        transformer = TransformerNetwork(
+                input_dims, 
+                encoding_dims, 
+                n_heads, 
+                n_encoder_blocks,
+                )
         self.network = transformer.network
 
         self.actor_head = nn.Sequential(
             nn.Linear(encoding_dims, n_actions),
-            nn.Softmax(dim=-1)
+            nn.Softmax(dim=-1),
         )
 
         self.critic_head = nn.Sequential(
             nn.Linear(encoding_dims, 1),
-            nn.Tanh()
+            nn.Tanh(),
         )
 
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')

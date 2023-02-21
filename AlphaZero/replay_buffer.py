@@ -1,5 +1,6 @@
 import numpy as np
 import torch as T
+from torch.utils.data import Dataset
 
 
 class ReplayBuffer:
@@ -15,12 +16,20 @@ class ReplayBuffer:
         self.episode_rewards = []
         
         self.max_length = max_mem_length
+
  
     def remember(self, state, action_probs):
+        '''
+        Store the state, action and reward.
+        '''
         self.episode_states.append(state)
         self.episode_action_probs.append(action_probs)
 
+
     def get_batch(self):
+        '''
+        Get a batch of data from the memory.
+        '''
         index = np.random.randint(0, len(self.states), self.batch_size)
 
         states = np.array(self.states, dtype=float)[index]
@@ -33,7 +42,60 @@ class ReplayBuffer:
 
         return states, probs, rewards
 
+
     def store_episode(self):
+        '''
+        Store the episode in the memory.
+        '''
+        self.states += self.episode_states
+        self.action_probs += self.episode_action_probs
+        self.rewards += self.episode_rewards
+
+        self.states = self.states[-self.max_length:]
+        self.action_probs = self.action_probs[-self.max_length:]
+        self.rewards = self.rewards[-self.max_length:]
+
+        self.episode_states = []
+        self.episode_action_probs = []
+        self.episode_rewards = []
+
+
+
+class ReplayBufferDataset(Dataset):
+    def __init__(self, batch_size, max_mem_length=25000):
+        self.batch_size = batch_size
+
+        self.states = []
+        self.action_probs = []
+        self.rewards = []
+
+        self.episode_states = []
+        self.episode_action_probs = []
+        self.episode_rewards = []
+        
+        self.max_length = max_mem_length
+
+
+    def __len__(self):
+        return len(self.states)
+
+
+    def __getitem__(self, idx):
+        return self.states[idx], self.action_probs[idx], self.rewards[idx]
+
+
+    def remember(self, state, action_probs):
+        '''
+        Store the state, action and reward.
+        '''
+        self.episode_states.append(state)
+        self.episode_action_probs.append(action_probs)
+
+
+    def store_episode(self):
+        '''
+        Store the episode in the memory.
+        '''
         self.states += self.episode_states
         self.action_probs += self.episode_action_probs
         self.rewards += self.episode_rewards

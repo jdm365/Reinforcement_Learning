@@ -1,14 +1,14 @@
 import torch as T
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
-import sys
 from saved_networks import ConnectN1dNetwork, Connect4NetworkConvolutional, Connect4NetworkTransformer
+
+
 
 class ActorCriticNetwork(nn.Module):
     def __init__(self, lr, input_dims, n_actions, convolutional=True):
         super(ActorCriticNetwork, self).__init__()
-        self.filename = 'Trained_Models/actor_critic'
+        self.filename = 'Trained_Models/actor_critic.pt'
         self.input_dims = input_dims
         self.convolutional = convolutional
         if convolutional:
@@ -22,11 +22,18 @@ class ActorCriticNetwork(nn.Module):
             self.actor_head = self.network.actor_head
             self.critic_head = self.network.critic_head
         else:
-            self.transformer = Connect4NetworkTransformer(input_dims, n_actions, n_encoder_blocks=4)
+            self.transformer = Connect4NetworkTransformer(
+                    input_dims, 
+                    n_actions, 
+                    encoding_dims=384,
+                    n_heads=8,
+                    n_encoder_blocks=10
+                    )
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr, weight_decay=1e-5)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
+
 
     def forward(self, board):
         state = self.prep_state(board)
@@ -52,7 +59,11 @@ class ActorCriticNetwork(nn.Module):
             value = value[0]
         return probs, value
 
+
     def prep_state(self, state):
+        '''
+        Cast and reshape.
+        '''
         state = T.FloatTensor(state).to(self.device)
         if len(state.shape) != len(self.input_dims):
             state = state.reshape(state.shape[0], 1, *state.shape[1:])
@@ -60,8 +71,10 @@ class ActorCriticNetwork(nn.Module):
             state = state.reshape(1, 1, *state.shape)
         return state
 
+
     def save_models(self):
         T.save(self.state_dict(), self.filename)
+
 
     def load_models(self, cpu=False):
         if cpu:
